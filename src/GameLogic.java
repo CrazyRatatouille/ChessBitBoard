@@ -48,8 +48,8 @@ public class GameLogic {
         if ((selected & wKnights) != 0) return legalKnightMoves(selected, whitePieces);
         if ((selected & bKnights) != 0) return legalKnightMoves(selected, blackPieces);
 
-        if ((selected & wBishops) != 0) return legalBishopMoves(selected, whitePieces);
-        if ((selected & bBishops) != 0) return legalBishopMoves(selected, blackPieces);
+        if ((selected & wBishops) != 0) return legalBishopMoves(selected, whitePieces, blackPieces);
+        if ((selected & bBishops) != 0) return legalBishopMoves(selected, blackPieces, whitePieces);
 
         if ((selected & wRooks) != 0) return legalRookMoves(selected, whitePieces);
         if ((selected & bRooks) != 0) return legalRookMoves(selected, blackPieces);
@@ -127,8 +127,78 @@ public class GameLogic {
                 & ~myPieces;
     }
 
-    //TODO: if it makes you be in a check abort
-    private long legalBishopMoves(long selected, long myPieces) {
+    //TODO: if it makes you be in a check abort and improve perf with magic bitboard
+    private long legalBishopMoves(long selected, long myPieces, long enemyPieces) {
+
+        long emptyTiles = ~fullBoard();
+
+        long NW = 0L;
+        long NE = 0L;
+        long SW = 0L;
+        long SE = 0L;
+
+        boolean bNW = true;
+        boolean bNE = true;
+        boolean bSW = true;
+        boolean bSE = true;
+
+
+        for (int inc = 1; inc < 9; inc++) {
+
+            long shiftNW = selected << (inc * 9);
+            long shiftNE = selected << (inc * 7);
+            long shiftSW = selected << (inc * 7);
+            long shiftSE = selected << (inc * 9);
+
+
+            if (bNW & (shiftNW & ~aFile) != 0) {
+
+                if ((shiftNW & myPieces) != 0) bNW = false;
+                else if ((shiftNW & enemyPieces) != 0) {
+                    NW |= shiftNW;
+                    bNW = false;
+                } else {
+                    NW |= shiftNW;
+                }
+            }
+
+            if (bNE & (shiftNE & ~hFile) != 0) {
+
+                if ((shiftNE & myPieces) != 0) bNE = false;
+                else if ((shiftNE & enemyPieces) != 0) {
+                    NE |= shiftNE;
+                    bNE = false;
+                } else {
+                    NE |= shiftNE;
+                }
+            }
+
+            if (bSW & (shiftSW & ~aFile) != 0){
+
+                if ((shiftSW & myPieces) != 0) bSW = false;
+                else if ((shiftSW & enemyPieces) != 0) {
+                    SW |= shiftSW;
+                    bSW = false;
+                } else {
+                    SW |= shiftSW;
+                }
+            }
+
+            if (bSE & (shiftSE & ~hFile) != 0) {
+
+                if ((shiftSE & myPieces) != 0) bSE = false;
+                else if ((shiftSE & enemyPieces) != 0) {
+                    SE |= shiftSE;
+                    bSE = false;
+                } else {
+                    SE |= shiftSE;
+                }
+            }
+        }
+
+        return NW | NE | SW | SE;
+
+
     }
 
     //TODO: if it makes you be in a check abort
