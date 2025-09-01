@@ -143,12 +143,12 @@ public class GameLogic {
         boolean bSE = true;
 
 
-        for (int inc = 1; inc < 9; inc++) {
+        for (int inc = 1; inc < 8; inc++) {
 
             long shiftNW = selected << (inc * 9);
             long shiftNE = selected << (inc * 7);
-            long shiftSW = selected << (inc * 7);
-            long shiftSE = selected << (inc * 9);
+            long shiftSW = selected >>> (inc * 7);
+            long shiftSE = selected >>> (inc * 9);
 
 
             if (bNW & (shiftNW & ~aFile) != 0) {
@@ -202,7 +202,79 @@ public class GameLogic {
     }
 
     //TODO: if it makes you be in a check abort
-    private long legalRookMoves(long selected, long myPieces) {
+    private long legalRookMoves(long selected, long myPieces, long enemyPieces) {
+
+        long emptyTile = ~fullBoard();
+
+        long North = 0L;
+        long West = 0L;
+        long East = 0L;
+        long South = 0L;
+
+        boolean N = true;
+        boolean W = true;
+        boolean E = true;
+        boolean S = true;
+
+        for (int inc = 1; inc < 8; inc++) {
+
+            long shiftN = selected << (inc * 8);
+            long shiftW = selected << inc;
+            long shiftE = selected >>> inc;
+            long shiftS = selected >>> (inc * 8);
+
+            if (N) {
+
+                if ((shiftN & enemyPieces) != 0) {
+                    North |= shiftN;
+                    N = false;
+                } else if ((shiftN & myPieces) != 0) {
+                    N = false;
+                } else {
+                    North |= shiftN;
+                }
+            }
+
+            if (W) {
+
+                if ((shiftW & enemyPieces) != 0) {
+                    West |= shiftW;
+                    W = false;
+                } else if ((shiftW & myPieces) != 0) {
+                    W = false;
+                } else {
+                    West |= shiftW;
+                }
+            }
+
+            if (E) {
+
+                if ((shiftE & enemyPieces) != 0) {
+                    East |= shiftE;
+                    E = false;
+                } else if ((shiftE & myPieces) != 0) {
+                    E = false;
+                } else {
+                    East |= shiftE;
+                }
+            }
+
+            if (S) {
+
+                if ((shiftS & enemyPieces) != 0) {
+                    South |= shiftS;
+                    S = false;
+                } else if ((shiftS & myPieces) != 0) {
+                    S = false;
+                } else {
+                    South |= shiftS;
+                }
+            }
+        }
+
+        return North | West | East | South;
+
+
     }
 
     //TODO: if it makes you be in a check abort
