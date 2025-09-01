@@ -1,4 +1,8 @@
+import javax.swing.text.AsyncBoxView;
+
 public class GameLogic {
+
+    //test
 
     private final long aFile = 0x8080808080808080L;
     private final long bFile = 0x4040404040404040L;
@@ -51,14 +55,14 @@ public class GameLogic {
         if ((selected & wBishops) != 0) return legalBishopMoves(selected, whitePieces, blackPieces);
         if ((selected & bBishops) != 0) return legalBishopMoves(selected, blackPieces, whitePieces);
 
-        if ((selected & wRooks) != 0) return legalRookMoves(selected, whitePieces);
-        if ((selected & bRooks) != 0) return legalRookMoves(selected, blackPieces);
+        if ((selected & wRooks) != 0) return legalRookMoves(selected, whitePieces, blackPieces);
+        if ((selected & bRooks) != 0) return legalRookMoves(selected, blackPieces, whitePieces);
 
-        if ((selected & wQueens) != 0) return legalQueenMoves(selected, whitePieces);
-        if ((selected & bQueens) != 0) return legalQueenMoves(selected, blackPieces);
+        if ((selected & wQueens) != 0) return legalQueenMoves(selected, whitePieces, blackPieces);
+        if ((selected & bQueens) != 0) return legalQueenMoves(selected, blackPieces, whitePieces);
 
-        if ((selected & wKing) != 0) return legalWKingMoves(selected);
-        if ((selected & bKing) != 0) return legalBKingMoves(selected);
+        if ((selected & wKing) != 0) return legalKingMoves(wKing, whitePieces, blackPieces);
+        if ((selected & bKing) != 0) return legalKingMoves(bKing, blackPieces, whitePieces);
 
         else return 0;
     }
@@ -278,15 +282,81 @@ public class GameLogic {
     }
 
     //TODO: if it makes you be in a check abort
-    private long legalQueenMoves(long selected, long myPieces) {
+    private long legalQueenMoves(long selected, long myPieces, long enemyPieces) {
+        return legalRookMoves(selected, myPieces, enemyPieces) | legalBishopMoves(selected, myPieces, enemyPieces);
     }
 
     //TODO: if it makes you be in a check abort
-    private long legalWKingMoves(long selected) {
+    private long legalKingMoves(long myKing, long myPieces, long enemyPieces) {
+
+        long legalMoves = 0L;
+
+        if ((myKing & ~aFile) != 0) {
+            legalMoves |= myKing << 9;
+            legalMoves |= myKing << 1;
+            legalMoves |= myKing >>> 7;
+        }
+        if ((myKing & ~hFile) != 0) {
+            legalMoves |= myKing << 7;
+            legalMoves |= myKing >>> 1;
+            legalMoves |= myKing >>> 9;
+        }
+        legalMoves |= myKing << 8;
+        legalMoves |= myKing >>> 8;
+
+        legalMoves = (legalMoves & enemyPieces) & (legalMoves & ~myPieces);
+
+        return legalMoves;
     }
 
-    private long legalBKingMoves(long selected) {
+
+    private long wPawnAtkBoard(long atkPieces) {
+
+        long atkBoard = 0L;
+        atkBoard |= (atkPieces & ~aFile) << 9;
+        atkBoard |= (atkPieces & ~hFile) << 7;
+
+        return atkBoard;
     }
 
+    private long bPawnAtkBoard(long atkPieces) {
 
+        long atkBoard = 0L;
+        atkBoard |= (atkPieces & ~aFile) >>> 7;
+        atkBoard |= (atkPieces & ~hFile) >>> 9;
+
+        return atkBoard;
+    }
+
+    private long knightAtkBoard (long atkPieces) {
+
+        return (atkPieces & ~aFile) << 17
+                | (atkPieces & ~hFile) << 15
+                | (atkPieces & ~(aFile & bFile)) << 10
+                | (atkPieces & ~(gFile & hFile)) << 6
+                | (atkPieces & ~(aFile & bFile)) >>> 6
+                | (atkPieces & ~(gFile & hFile)) >>> 10
+                | (atkPieces & ~aFile) >>> 15
+                | (atkPieces & ~hFile) >>> 17;
+    }
+
+    private long bishopAtkBoard (long atkPieces) {
+
+        long atkBoard = 0L;
+
+        long AB = aFile | bFile;
+        long ABC = AB | cFile;
+        long ABCD = ABC | dFile;
+        long GH = gFile | hFile;
+        long FGH = GH | fFile;
+
+
+        atkBoard |= (atkPieces & ~aFile) << 9 | (atkPieces & ~aFile) >>> 7;
+        atkBoard |= (atkPieces & ~AB) << 18 | (atkPieces & ~AB) >>> 14;
+        atkBoard |= (atkPieces & ~ABC) << 27 | (atkPieces & ~ABC) >>> 21;
+        atkBoard |= (atkPieces & ~ABCD) << 36 | (atkPieces & ~ABCD) >>> 28;
+        atkBoard |= (atkPieces & ~ABCD) << 36 | (atkPieces & ~ABCD) >>> 28;
+
+        return atkBoard;
+    }
 }
