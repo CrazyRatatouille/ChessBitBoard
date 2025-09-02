@@ -340,23 +340,67 @@ public class GameLogic {
                 | (atkPieces & ~hFile) >>> 17;
     }
 
-    private long bishopAtkBoard (long atkPieces) {
+    private long bishopAtkBoard (long atkPieces, long myPieces) {
 
-        long atkBoard = 0L;
+        long notA = atkPieces & ~aFile;
+        long notH = atkPieces & ~hFile;
+        long occ = fullBoard();
 
-        long AB = aFile | bFile;
-        long ABC = AB | cFile;
-        long ABCD = ABC | dFile;
-        long GH = gFile | hFile;
-        long FGH = GH | fFile;
+        return recLineGen(notA << 9, myPieces, occ,  1)
+                | recLineGen(notH << 7, myPieces, occ, 2)
+                | recLineGen(notA >>> 7, myPieces, occ, 3)
+                | recLineGen(notH >>> 9, myPieces, occ, 4);
+    }
 
+    private long RookAtkBoard (long atkPieces, long myPieces) {
 
-        atkBoard |= (atkPieces & ~aFile) << 9 | (atkPieces & ~aFile) >>> 7;
-        atkBoard |= (atkPieces & ~AB) << 18 | (atkPieces & ~AB) >>> 14;
-        atkBoard |= (atkPieces & ~ABC) << 27 | (atkPieces & ~ABC) >>> 21;
-        atkBoard |= (atkPieces & ~ABCD) << 36 | (atkPieces & ~ABCD) >>> 28;
-        atkBoard |= (atkPieces & ~ABCD) << 36 | (atkPieces & ~ABCD) >>> 28;
+        long notA = atkPieces & ~aFile;
+        long notH = atkPieces & ~hFile;
+        long occ = fullBoard();
 
-        return atkBoard;
+        return recLineGen(atkPieces << 8, myPieces, occ,  5)
+                | recLineGen(notA << 1, myPieces, occ, 6)
+                | recLineGen(notH >>> 1, myPieces, occ, 7)
+                | recLineGen(atkPieces >>> 8, myPieces, occ, 8);
+    }
+
+    private long QueenAtkBoard (long atkPieces, long myPieces) {
+
+        long notA = atkPieces & ~aFile;
+        long notH = atkPieces & ~hFile;
+        long occ = fullBoard();
+
+        return
+                //diagonals (bishop)
+                recLineGen(notA << 9, myPieces, occ,  1)
+                | recLineGen(notH << 7, myPieces, occ, 2)
+                | recLineGen(notA >>> 7, myPieces, occ, 3)
+                | recLineGen(notH >>> 9, myPieces, occ, 4)
+
+                //straights (rook)
+                | recLineGen(atkPieces << 8, myPieces, occ,  5)
+                | recLineGen(notA << 1, myPieces, occ, 6)
+                | recLineGen(notH >>> 1, myPieces, occ, 7)
+                | recLineGen(atkPieces >>> 8, myPieces, occ, 8);
+    }
+
+    private long recLineGen (long curPos, long myPieces, long occ, int var) {
+
+        //1 = NW | 2 = NE | 3 = SW | 4 = SE | 5 = N | 6 = W | 7 = E | 8 = S
+
+        if (curPos == 0L) return 0L;
+
+        long goFurther = curPos & ~occ;
+        long notHittingMyPieces = curPos & ~myPieces;
+
+        if (var == 1) return notHittingMyPieces | recLineGen((goFurther & ~aFile) << 9, myPieces, occ, var);
+        if (var == 2) return notHittingMyPieces | recLineGen((goFurther & ~hFile) << 7, myPieces, occ, var);
+        if (var == 3) return notHittingMyPieces | recLineGen((goFurther & ~aFile) >>> 7, myPieces, occ, var);
+        if (var == 4) return notHittingMyPieces | recLineGen((goFurther & ~hFile) >>> 9, myPieces, occ, var);
+
+        if (var == 5) return notHittingMyPieces | recLineGen(goFurther << 8, myPieces, occ, var);
+        if (var == 6) return notHittingMyPieces | recLineGen((goFurther & ~aFile) << 1, myPieces, occ, var);
+        if (var == 7) return notHittingMyPieces | recLineGen((goFurther & ~hFile) >>> 1, myPieces, occ, var);
+        else return notHittingMyPieces | recLineGen(goFurther >>> 8, myPieces, occ, var);
     }
 }
