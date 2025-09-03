@@ -1,8 +1,8 @@
-import javax.swing.text.AsyncBoxView;
-
 public class GameLogic {
 
     //test
+
+    enum Color {WHITE, BLACK}
 
     private final long aFile = 0x8080808080808080L;
     private final long bFile = 0x4040404040404040L;
@@ -352,7 +352,7 @@ public class GameLogic {
                 | recLineGen(notH >>> 9, myPieces, occ, 4);
     }
 
-    private long RookAtkBoard (long atkPieces, long myPieces) {
+    private long rookAtkBoard(long atkPieces, long myPieces) {
 
         long notA = atkPieces & ~aFile;
         long notH = atkPieces & ~hFile;
@@ -364,7 +364,7 @@ public class GameLogic {
                 | recLineGen(atkPieces >>> 8, myPieces, occ, 8);
     }
 
-    private long QueenAtkBoard (long atkPieces, long myPieces) {
+    private long queenAtkBoard(long atkPieces, long myPieces) {
 
         long notA = atkPieces & ~aFile;
         long notH = atkPieces & ~hFile;
@@ -402,5 +402,62 @@ public class GameLogic {
         if (var == 6) return notHittingMyPieces | recLineGen((goFurther & ~aFile) << 1, myPieces, occ, var);
         if (var == 7) return notHittingMyPieces | recLineGen((goFurther & ~hFile) >>> 1, myPieces, occ, var);
         else return notHittingMyPieces | recLineGen(goFurther >>> 8, myPieces, occ, var);
+    }
+
+    private long kingAtkBoard (long curPos) {
+
+        long whitePieces = whitePieces();
+
+        long myPieces = ((curPos & whitePieces) != 0)? whitePieces : blackPieces();
+
+        return (curPos << 9) & ~myPieces
+                | (curPos << 8) & ~myPieces
+                | (curPos << 7) & ~myPieces
+                | (curPos << 1) & ~myPieces
+                | (curPos >>> 1) & ~myPieces
+                | (curPos >>> 7) & ~myPieces
+                | (curPos >>> 8) & ~myPieces
+                | (curPos >>> 9) & ~myPieces;
+    }
+
+    private long getAtkBoard (Color color) {
+
+        long myPieces;
+
+        if (color == Color.WHITE) {
+
+            myPieces = whitePieces();
+
+            return wPawnAtkBoard(wPawns)
+                    | knightAtkBoard(wKnights)
+                    | bishopAtkBoard(wBishops, myPieces)
+                    | rookAtkBoard(wRooks, myPieces)
+                    | queenAtkBoard(wQueens, myPieces)
+                    | kingAtkBoard(wKing);
+
+        } else {
+
+            myPieces = blackPieces();
+
+            return wPawnAtkBoard(bPawns)
+                    | knightAtkBoard(bKnights)
+                    | bishopAtkBoard(bBishops, myPieces)
+                    | rookAtkBoard(bRooks, myPieces)
+                    | queenAtkBoard(bQueens, myPieces)
+                    | kingAtkBoard(bKing);
+
+        }
+    }
+
+    private boolean checkLegalaty (long from, long to, long PieceType) {
+
+        long whitePieces = whitePieces();
+        long myPieces = ((from & whitePieces) != 0)? whitePieces : blackPieces();
+        PieceType = (PieceType & ~from) & to;
+
+
+
+        PieceType = (PieceType & ~to) & from;
+        return false;
     }
 }
