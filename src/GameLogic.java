@@ -4,41 +4,8 @@ public class GameLogic {
 
     enum Color {WHITE, BLACK}
 
-    private final long aFile = 0x8080808080808080L;
-    private final long bFile = 0x4040404040404040L;
-    private final long cFile = 0x2020202020202020L;
-    private final long dFile = 0x1010101010101010L;
-    private final long eFile = 0x0808080808080808L;
-    private final long fFile = 0x0404040404040404L;
-    private final long gFile = 0x0202020202020202L;
-    private final long hFile = 0x0101010101010101L;
-
-    private final long eightRank = 0xFF00000000000000L;
-    private final long seventhRank = 0x00FF000000000000L;
-    private final long sixthRank = 0x0000FF0000000000L;
-    private final long fifthRank = 0x000000FF00000000L;
-    private final long fourthRank = 0x00000000FF000000L;
-    private final long thirdRank = 0x0000000000FF0000L;
-    private final long secondRank = 0x000000000000FF00L;
-    private final long firstRank = 0x00000000000000FFL;
-
-    private long wPawns = 0x000000000000FF00L; //a2 - h2
-    private long wKnights = 0x0000000000000042L; //b1 & g1
-    private long wBishops = 0x0000000000000024L; //c1 & f1
-    private long wRooks = 0x0000000000000081L; //a1 & h1
-    private long wQueens = 0x0000000000000010L; //d1
-    private long wKing = 0x0000000000000008L; //e1
-
-    private long bPawns = 0x00FF000000000000L; //a7 - g7
-    private long bKnights = 0x4200000000000000L; //b8 & g8
-    private long bBishops = 0x2400000000000000L; //c8 & f8
-    private long bRooks = 0x8100000000000000L; //a8 & h8
-    private long bQueens = 0x1000000000000000L; //d8
-    private long bKing = 0x0800000000000000L; //e8
-
-    private long enPassant = 0x0L;
-
     private GameLogic() {
+
     }
 
     public long legalMoves(long selected) {
@@ -310,6 +277,9 @@ public class GameLogic {
     }
 
 
+    ///Very Confident in those bellow
+
+
     private long wPawnAtkBoard(long atkPieces) {
 
         long atkBoard = 0L;
@@ -422,42 +392,25 @@ public class GameLogic {
 
     private long getAtkBoard (Color color) {
 
-        long myPieces;
+        long myPieces = 0L;
+        int indAdj = (color == Color.WHITE)? 0 : 6;
 
-        if (color == Color.WHITE) {
-
-            myPieces = whitePieces();
-
-            return wPawnAtkBoard(wPawns)
-                    | knightAtkBoard(wKnights)
-                    | bishopAtkBoard(wBishops, myPieces)
-                    | rookAtkBoard(wRooks, myPieces)
-                    | queenAtkBoard(wQueens, myPieces)
-                    | kingAtkBoard(wKing);
-
-        } else {
-
-            myPieces = blackPieces();
-
-            return wPawnAtkBoard(bPawns)
-                    | knightAtkBoard(bKnights)
-                    | bishopAtkBoard(bBishops, myPieces)
-                    | rookAtkBoard(bRooks, myPieces)
-                    | queenAtkBoard(bQueens, myPieces)
-                    | kingAtkBoard(bKing);
-
+        for (int i = 0; i < 6; i++) {
+            myPieces |= Pieces[i + indAdj];
         }
+
+        return myPieces;
     }
 
-    private boolean checkLegalaty (long from, long to, long PieceType) {
+    private boolean checkLegalaty (long from, long to, int pieceIndex) {
 
         long whitePieces = whitePieces();
         long myPieces = ((from & whitePieces) != 0)? whitePieces : blackPieces();
-        PieceType = (PieceType & ~from) & to;
+        Pieces[pieceIndex] = (Pieces[pieceIndex] & ~from) & to;
 
 
 
-        PieceType = (PieceType & ~to) & from;
+        Pieces[pieceIndex] = (Pieces[pieceIndex] & ~to) & from;
         return false;
     }
 }
