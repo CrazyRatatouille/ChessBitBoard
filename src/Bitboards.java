@@ -46,6 +46,38 @@ public class Bitboards {
         return Pieces[index];
     }
 
+    ///returns the current bitboard for each PieceType (0-5) White and (6 - 11) Black
+    ///0/6 Pawns  |  1/7 Knights  |  2/8 Bishops  |  3/9 Rooks  |  4/10 Queens  |  5/11 Kings
+    public long getPieces(Color color, PieceType pieceType) {
+
+        int indAdj = (color == Color.Black)? 0 : 6;
+        int piece;
+
+        if (pieceType == PieceType.Pawn) piece = 0;
+        else if (pieceType == PieceType.Knight) piece = 1;
+        else if (pieceType == PieceType.Bishop) piece = 2;
+        else if (pieceType == PieceType.Rook) piece = 3;
+        else if (pieceType == PieceType.Queen) piece = 4;
+        else piece = 5;
+
+        return Pieces[piece + indAdj];
+    }
+
+    public long getColorOcc(Color color) {
+
+        return getPieces(color, PieceType.Pawn)
+                | getPieces(color, PieceType.Knight)
+                | getPieces(color, PieceType.Bishop)
+                | getPieces(color, PieceType.Rook)
+                | getPieces(color, PieceType.Queen)
+                | getPieces(color, PieceType.King);
+    }
+
+    public long getOcc() {
+
+        return getColorOcc(Color.White) | getColorOcc(Color.Black);
+    }
+
     public long getEnPassant() {
         return enPassant;
     }
@@ -57,6 +89,7 @@ public class Bitboards {
         }
 
         this.enPassant = newEnPassant;
-
     }
+
+
 }
