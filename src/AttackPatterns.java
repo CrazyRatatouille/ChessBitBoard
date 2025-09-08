@@ -1,6 +1,7 @@
 public class AttackPatterns {
 
-    Bitboards bitboards;
+    private final Bitboards bitboards;
+    private final PieceType[] pieces = PieceType.values();
 
     public AttackPatterns(Bitboards bitboards) {
         this.bitboards = bitboards;
@@ -8,12 +9,13 @@ public class AttackPatterns {
 
     public long getFullAtkBoard (Color color) {
 
-        return getAttackPattern(color, PieceType.Pawn)
-                | getAttackPattern(color, PieceType.Knight)
-                | getAttackPattern(color, PieceType.Bishop)
-                | getAttackPattern(color, PieceType.Rook)
-                | getAttackPattern(color, PieceType.Queen)
-                | getAttackPattern(color, PieceType.King);
+        long fullAtkBoard = 0x0L;
+
+        for (PieceType pieceType : pieces) {
+           fullAtkBoard |= getAttackPattern(color, pieceType);
+        }
+
+        return fullAtkBoard;
     }
 
     private long getAttackPattern (Color color, PieceType pieceType) {
@@ -118,20 +120,6 @@ public class AttackPatterns {
     }
 
     private long kingAtkPattern(Color color) {
-
-        long king = bitboards.getPieces(color, PieceType.King);
-        long myOcc = bitboards.getColorOcc(color);
-        long kingNotA = king & ~bitboards.getFile(0);
-        long kingNotH = king & ~bitboards.getFile(7);
-
-        return king << 8
-                | kingNotH << 7
-                | kingNotH >>> 1
-                | kingNotH >>> 9
-                | king >>> 8
-                | kingNotA >>> 7
-                | kingNotA << 1
-                | kingNotA << 9;
 
     }
 

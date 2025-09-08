@@ -3,6 +3,14 @@ public class Bitboards {
     private final long[] Pieces = new long[12];
     private long enPassant = 0L;
 
+    private static boolean a1RookMoved;
+    private static boolean h1RookMoved;
+    private static boolean a8RookMoved;
+    private static boolean h8RookMoved;
+
+    private static boolean wKingMoved;
+    private static boolean bKingMoved;
+
     public Bitboards() {
 
         Pieces[0] = 0x000000000000FF00L;
@@ -17,6 +25,13 @@ public class Bitboards {
         Pieces[9] = 0x8100000000000000L;
         Pieces[10] = 0x1000000000000000L;
         Pieces[11] = 0x0800000000000000L;
+
+        a1RookMoved = false;
+        h1RookMoved = false;
+        a8RookMoved = false;
+        h8RookMoved = false;
+        wKingMoved = false;
+        bKingMoved = false;
     }
 
     ///returns the Ranks 1-8 in bitboard representation
@@ -35,15 +50,6 @@ public class Bitboards {
 
         long aFile = 0x8080808080808080L;
         return aFile >>> index;
-    }
-
-    ///returns the current bitboard for each PieceType (0-5) White and (6 - 11) Black
-    ///0/6 Pawns  |  1/7 Knights  |  2/8 Bishops  |  3/9 Rooks  |  4/10 Queens  |  5/11 Kings
-    public long getPieces(int index) {
-
-        if (index < 0 || index > 12) throw new IndexOutOfBoundsException("index "  + index + " out of range [0, 12)");
-
-        return Pieces[index];
     }
 
     ///returns the current bitboard for each PieceType (0-5) White and (6 - 11) Black
@@ -91,5 +97,11 @@ public class Bitboards {
         this.enPassant = newEnPassant;
     }
 
+    public void setPieces(Color color, PieceType pieceType, long from, long to) {
 
+        int ind = (color == Color.White)? 0 : 6;
+        ind += pieceType.ordinal();
+
+        Pieces[ind] = (Pieces[ind] & ~from) | to;
+    }
 }
