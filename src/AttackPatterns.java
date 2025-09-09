@@ -121,6 +121,18 @@ public class AttackPatterns {
 
     private long kingAtkPattern(Color color) {
 
+        long king = bitboards.getPieces(color, PieceType.King);
+        long kingNotA = king & ~bitboards.getFile(0);
+        long kingNotH = king & ~bitboards.getFile(7);
+
+        return king << 8
+                | kingNotH << 7
+                | kingNotH >>> 1
+                | kingNotH >>> 9
+                | king >>> 8
+                | kingNotA >>> 7
+                | kingNotA << 1
+                | kingNotA << 9;
     }
 
     private long recLineGen(long movedPieces, long myOcc, long occ, Direction direction) {

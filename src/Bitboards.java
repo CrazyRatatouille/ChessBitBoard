@@ -1,17 +1,23 @@
+import java.util.Arrays;
+
 public class Bitboards {
 
-    private final long[] Pieces = new long[12];
+    private long[] Pieces;
     private long enPassant = 0L;
+    private static long aFile = 0x8080808080808080L;
+    private static long firstRank = 0xFFL;
 
-    private static boolean a1RookMoved;
-    private static boolean h1RookMoved;
-    private static boolean a8RookMoved;
-    private static boolean h8RookMoved;
+    private boolean a1RookMoved;
+    private boolean h1RookMoved;
+    private boolean a8RookMoved;
+    private boolean h8RookMoved;
+    private boolean wKingMoved;
+    private boolean bKingMoved;
 
-    private static boolean wKingMoved;
-    private static boolean bKingMoved;
 
     public Bitboards() {
+
+        Pieces = new long[12];
 
         Pieces[0] = 0x000000000000FF00L;
         Pieces[1] = 0x0000000000000042L;
@@ -34,12 +40,22 @@ public class Bitboards {
         bKingMoved = false;
     }
 
+    public Bitboards(Bitboards bitboard) {
+        this.Pieces = Arrays.copyOf(bitboard.Pieces,12);
+
+        this.a1RookMoved = bitboard.a1RookMoved;
+        this.a8RookMoved = bitboard.a8RookMoved;
+        this.h1RookMoved = bitboard.h1RookMoved;
+        this.h8RookMoved = bitboard.h8RookMoved;
+        this.wKingMoved = bitboard.wKingMoved;
+        this.bKingMoved = bitboard.bKingMoved;
+    }
+
     ///returns the Ranks 1-8 in bitboard representation
     public long getRank(int index) {
 
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("index "  + index + " out of range [0, 8)");
 
-        long firstRank = 0xFFL;
         return firstRank << (index * 8);
     }
 
@@ -48,7 +64,6 @@ public class Bitboards {
 
         if (index < 0 || index > 7) throw new IndexOutOfBoundsException("index "  + index + " out of range [0, 8)");
 
-        long aFile = 0x8080808080808080L;
         return aFile >>> index;
     }
 
@@ -103,5 +118,60 @@ public class Bitboards {
         ind += pieceType.ordinal();
 
         Pieces[ind] = (Pieces[ind] & ~from) | to;
+    }
+
+    public void setPieces(Color color, PieceType pieceType, long newPiece) {
+
+        int ind = (color == Color.White)? 0 : 6;
+        ind += pieceType.ordinal();
+
+        Pieces[ind] |= newPiece;
+    }
+
+    /// true -> king has moved already | king -> rook is yet to move
+    public boolean kingMoved(Color color) {
+
+        if (color == Color.White) return wKingMoved;
+        return bKingMoved;
+    }
+
+    /// true -> rook has moved already | false -> rook is yet to move
+    public boolean rookMoved(Color color, long file) {
+
+        if (file != aFile && file != (aFile) >>> 7) throw new IllegalArgumentException("file must be a/h-File!");
+
+        if (color == Color.White) {
+            if (file == aFile) return a1RookMoved;
+            return h1RookMoved;
+        }
+        if (file == aFile) return a8RookMoved;
+        return h8RookMoved;
+    }
+
+    public void changeKingCastlingRights(Color color) {
+
+        if (color == Color.White) {
+            wKingMoved = !wKingMoved;
+            return;
+        }
+
+        bKingMoved = !bKingMoved;
+    }
+
+    public void changeRookCastlingRights(Color color, long file) {
+
+        long RookOnA = file & aFile;
+        long RookOnH = file & (aFile >>> 7);
+
+        if ((RookOnA | RookOnH) == 0x0L) {
+            throw new IllegalArgumentException("Starting position of the Rook can only be on the a/h File!");
+        }
+
+        if (RookOnA != 0x0L) {
+            if (color == Color.White) a1RookMoved = !a1RookMoved;
+            else a8RookMoved = !a8RookMoved;
+        }
+        else if (color == Color.White) h1RookMoved = !h1RookMoved;
+        else h8RookMoved = !h8RookMoved;
     }
 }
