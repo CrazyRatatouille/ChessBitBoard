@@ -1,3 +1,5 @@
+import java.lang.invoke.WrongMethodTypeException;
+
 public class LegalMoves {
 
     private final Bitboards bitboards;
@@ -49,10 +51,10 @@ public class LegalMoves {
         long NE = ((pos & ~bitboards.getFile(7)) << 7) & (enemyOcc | enPassant);
         long NW = ((pos & ~bitboards.getFile(0)) << 9) & (enemyOcc | enPassant);
 
-        one = checkLegality(Color.White, PieceType.Pawn, pos, one)? one : 0x0L;
-        two = checkLegality(Color.White, PieceType.Pawn, pos, two)? two : 0x0L;
-        NE = checkLegality(Color.White, PieceType.Pawn, pos, NE)? NE : 0x0L;
-        NW = checkLegality(Color.White, PieceType.Pawn, pos, NW)? NW : 0x0L;
+        one = quietMoveLegality(Color.White, PieceType.Pawn, pos, one)? one : 0x0L;
+        two = quietMoveLegality(Color.White, PieceType.Pawn, pos, two)? two : 0x0L;
+        NE = quietMoveLegality(Color.White, PieceType.Pawn, pos, NE)? NE : 0x0L;
+        NW = quietMoveLegality(Color.White, PieceType.Pawn, pos, NW)? NW : 0x0L;
 
         return one | two | NE | NW;
     }
@@ -95,17 +97,79 @@ public class LegalMoves {
 
     }
 
+    ///TODO: CHECK IF LOGCI ACTUALLY WORKS
     private long bishopLegalMoves(long pos, Color color) {
 
-        long bishopsNotA = pos & ~bitboards.getFile(0);
-        long bishopsNotH = pos & ~bitboards.getFile(7);
-        long myOcc = bitboards.getColorOcc(color);
-        long occ = bitboards.getOcc();
+        long legalMoves = 0x0L;
+        long aFile = bitboards.getFile(0);
+        long hFile = bitboards.getFile(7);
 
-        return recLineGen(bishopsNotH << 7, myOcc, occ, Direction.NorthEast)
-                | recLineGen(bishopsNotH >>> 9, myOcc, occ, Direction.SouthEast)
-                | recLineGen(bishopsNotA >>> 7, myOcc, occ, Direction.SouthWest)
-                | recLineGen(bishopsNotA << 9, myOcc, occ, Direction.NorthWest);
+        long myOcc = bitboards.getColorOcc(color);
+        long enemyOcc = bitboards.getColorOcc(color.other());
+
+        long NE = (pos & ~hFile) << 7;
+        long SE = (pos & ~hFile) >>> 9;
+        long SW = (pos & ~aFile) >>> 7;
+        long NW = (pos & ~aFile) << 9;
+
+        boolean legality;
+
+        while ((NE | SE | SW | NW) != 0x0L) {
+
+            if (NE == 0x0L);
+            else if ((NE & myOcc) != 0x0L) NE = 0x0L;
+            else if ((NE & enemyOcc) != 0x0L) {
+                legality = captureLegality(color, PieceType.Bishop, pos, NE);
+                legalMoves |= (legality)? NE : 0x0L;
+                NE = 0x0L;
+            }
+            else {
+                legality = quietMoveLegality(color, PieceType.Bishop, pos, NE);
+                legalMoves |= (legality)? NE : 0x0L;
+                NE = (NE & ~hFile) << 7;
+            }
+
+            if (SE == 0x0L);
+            else if ((SE & myOcc) != 0x0L) SE = 0x0L;
+            else if ((SE & enemyOcc) != 0x0L) {
+                legality = captureLegality(color, PieceType.Bishop, pos, SE);
+                legalMoves |= (legality)? SE : 0x0L;
+                SE = 0x0L;
+            }
+            else {
+                legality = quietMoveLegality(color, PieceType.Bishop, pos, SE);
+                legalMoves |= (legality)? SE : 0x0L;
+                SE = (SE & ~hFile) >>> 9;
+            }
+
+            if (SW == 0x0L);
+            else if ((SW & myOcc) != 0x0L) SW = 0x0L;
+            else if ((SW & enemyOcc) != 0x0L) {
+                legality = captureLegality(color, PieceType.Bishop, pos, SW);
+                legalMoves |= (legality)? SW : 0x0L;
+                SW = 0x0L;
+            } else {
+                legality = quietMoveLegality(color, PieceType.Bishop, pos, SW);
+                legalMoves |= (legality)? SW : 0x0L;
+                SW = (SW & ~aFile) >>> 7;
+            }
+
+            if (NW == 0x0L);
+            else if ((NW & myOcc) != 0x0L) NW = 0x0L;
+            else if ((NW & enemyOcc) != 0x0L) {
+                legality = captureLegality(color, PieceType.Bishop, pos, NW);
+                legalMoves |= (legality)? NW : 0x0L;
+                NW = 0x0L;
+            }
+            else {
+                legality = quietMoveLegality(color, PieceType.Bishop, pos, NW);
+                legalMoves |= (legality)? NW : 0x0L;
+                NW = (NW & ~aFile) << 9;
+            }
+        }
+
+        return legalMoves;
+
     }
 
     private long rookLegalMoves(long pos, Color color) {
@@ -178,13 +242,97 @@ public class LegalMoves {
 
     ///true -> legal move | false -> illegal move
     /// TODO: enPassant undo, conusume undo, castling undo, castling check???
-    private boolean checkLegality (Color color, PieceType pieceType, long from, long to) {
+    private boolean quietMoveLegality (Color color, PieceType pieceType, long from, long to) {
 
-        Color enemy = (color == Color.White)? Color.Black : Color.White;
+        Color enemyColor = color.other();
 
         bitboards.setPieces(color, pieceType, from, to);
-        boolean legality = !(checkForCheck(color, enemy));
+        boolean legality = !(checkForCheck(color, enemyColor));
         bitboards.setPieces(color, pieceType, to, from);
+        return legality;
+    }
+
+    private boolean captureLegality (Color color, PieceType pieceType, long from, long to) {
+
+        Color enemyColor = color.other();
+        PieceType enemyPieceType = null;
+
+        for (PieceType p : PieceType.values()) {
+
+            long curPiece = bitboards.getPieces(enemyColor, p);
+            if ((to & curPiece) != 0) {
+                enemyPieceType = p;
+                break;
+            }
+        }
+
+        if (enemyPieceType == null) throw new WrongMethodTypeException("No Piece is Taken, Wrong Method called!!!");
+
+        //make Move
+        bitboards.setPieces(color, pieceType, from, to);
+        bitboards.setPieces(enemyColor, enemyPieceType, to, 0x0L);
+
+        boolean legality = !(checkForCheck(color, enemyColor));
+
+        //Undo Move
+        bitboards.setPieces(color, pieceType, to, from);
+        bitboards.setPieces(enemyColor,enemyPieceType, to);
+
+        return legality;
+    }
+
+    /// this method only checks if King is in check after Castling
+    /// Precodition: king/rook present / unmoved / valid castling rights, path empty and not attacked
+    /// Postcodition: After Castling king is not in check -> true, king is in check -> false
+    private boolean castlingLegality (Color color, long from, long to, long rookFile) {
+
+        Color enemyColor = color.other();
+
+        long aFile = bitboards.getFile(0);
+        long hFile = bitboards.getFile(7);
+        long homeRank = (color == Color.White)? bitboards.getRank(0) : bitboards.getRank(7);
+
+        if (rookFile != aFile && rookFile != hFile) throw new IllegalArgumentException("file should be a/h-File!");
+
+        if (bitboards.kingMoved(color) || bitboards.rookMoved(color, rookFile)) return false;
+
+        boolean kingSide = rookFile == hFile;
+
+        long rookFrom = bitboards.getPieces(color, PieceType.Rook) & rookFile & homeRank;
+        long rookTo = (kingSide)? (to << 1) : (to >>> 1);
+
+        bitboards.setPieces(color, PieceType.King, from, to);
+        bitboards.setPieces(color, PieceType.Rook, rookFrom, rookTo);
+
+        boolean legality = !checkForCheck(color, enemyColor);
+
+        bitboards.setPieces(color, PieceType.King, to, from);
+        bitboards.setPieces(color, PieceType.Rook, rookTo, rookFrom);
+
+        return legality;
+    }
+
+    private boolean enPassantCaptureLegality (Color color, PieceType pieceType, long from, long to) {
+
+        if (pieceType != PieceType.Pawn) throw new WrongMethodTypeException("EP only applies to pawns!");
+
+        long enPassant = bitboards.getEnPassant();
+
+        if ((enPassant & to) == 0) throw new IllegalStateException("targetSquare is not the current EP target square!!!");
+
+        Color enemyColor = color.other();
+        long pawnCaptured = (enemyColor == Color.White)? to << 8: to >>> 8;
+
+        bitboards.setPieces(color, PieceType.Pawn, from, to);
+        bitboards.setEnPassant(0x0L);
+        bitboards.setPieces(enemyColor, PieceType.Pawn, pawnCaptured, 0x0L);
+
+        boolean legality = !(checkForCheck(color, enemyColor));
+
+        bitboards.setPieces(color, PieceType.Pawn, to, from);
+        bitboards.setEnPassant(enPassant);
+        bitboards.setPieces(enemyColor, PieceType.Pawn, pawnCaptured);
+
         return legality;
     }
 
