@@ -97,7 +97,7 @@ public class LegalMoves {
 
     }
 
-    ///TODO: CHECK IF LOGCI ACTUALLY WORKS
+    ///TODO: CHECK IF LOGIC ACTUALLY WORKS
     private long bishopLegalMoves(long pos, Color color) {
 
         long legalMoves = 0x0L;
@@ -169,20 +169,24 @@ public class LegalMoves {
         }
 
         return legalMoves;
-
     }
 
     private long rookLegalMoves(long pos, Color color) {
 
-        long rooksNotA = pos & ~bitboards.getFile(0);
-        long rooksNotH = pos & ~bitboards.getFile(7);
-        long myOcc = bitboards.getColorOcc(color);
-        long occ = bitboards.getOcc();
+        long legalMoves = 0x0L;
+        long aFile = bitboards.getFile(0);
+        long hFile = bitboards.getFile(7);
 
-        return recLineGen(pos << 8, myOcc, occ, Direction.North)
-                | recLineGen(rooksNotH >>> 1, myOcc, occ, Direction.East)
-                | recLineGen(pos >>> 8, myOcc, occ, Direction.South)
-                | recLineGen(rooksNotA << 1, myOcc, occ, Direction.West);
+        long myOcc = bitboards.getColorOcc(color);
+        long enemyOcc = bitboards.getColorOcc(color.other());
+
+        long N = pos << 8;
+        long E = (pos & ~hFile) >>> 1;
+        long S = pos >>> 8;
+        long W = (pos & ~aFile) << 1;
+
+        while ((N | E | S | W) != 0x0L);
+        return 0x0L;
     }
 
     private long queenLegalMoves(long pos, Color color) {
