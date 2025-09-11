@@ -185,7 +185,25 @@ public class LegalMoves {
         long S = pos >>> 8;
         long W = (pos & ~aFile) << 1;
 
-        while ((N | E | S | W) != 0x0L);
+        boolean legality;
+
+        while ((N | E | S | W) != 0x0L) {
+
+            if (N == 0x0L);
+            else if ((N & myOcc) != 0x0L) N = 0x0L;
+            else if ((N & enemyOcc) != 0x0L) {
+                legality = captureLegality(color, PieceType.Rook, pos, N);
+                legalMoves |= (legality)? N : 0x0L;
+                N = 0x0L;
+            }
+            else {
+                legality = quietMoveLegality(color, PieceType.Rook, pos, N);
+                legalMoves |= (legality)? N : 0x0L;
+                N <<= 8;
+            }
+
+
+        }
         return 0x0L;
     }
 
