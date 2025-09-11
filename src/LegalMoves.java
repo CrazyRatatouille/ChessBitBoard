@@ -377,6 +377,7 @@ public class LegalMoves {
 
     // TODO: create a new method so bishop/rook/queenLegalMoves doesnt use duplicate code and abstactify Code
 
+    // TODO: create a working kingLegalMoves Method
     private long kingLegalMoves(long pos, Color color) {
 
         long myOcc = bitboards.getColorOcc(color);
@@ -391,27 +392,6 @@ public class LegalMoves {
                 | kingNotA >>> 7
                 | kingNotA << 1
                 | kingNotA << 9;
-    }
-
-    private long recLineGen(long movedPieces, long myOcc, long occ, Direction direction) {
-
-        if (movedPieces  == 0x0L) return 0x0L;
-
-        long goFurther = movedPieces & ~occ;
-        long notAtkMyPieces = movedPieces & ~myOcc;
-
-        long piecesNotA = goFurther & ~bitboards.getFile(0);
-        long piecesNotH = goFurther & ~bitboards.getFile(7);
-
-        if (direction == Direction.North) return notAtkMyPieces | recLineGen(goFurther << 8, myOcc, occ, direction);
-        if (direction == Direction.East) return notAtkMyPieces | recLineGen(piecesNotH >>> 1, myOcc, occ, direction);
-        if (direction == Direction.South) return notAtkMyPieces | recLineGen(goFurther >>> 8, myOcc, occ, direction);
-        if (direction == Direction.West) return notAtkMyPieces | recLineGen(piecesNotA << 1, myOcc, occ, direction);
-
-        if (direction == Direction.NorthEast) return notAtkMyPieces | recLineGen(piecesNotH << 7, myOcc, occ, direction);
-        if (direction == Direction.SouthEast) return notAtkMyPieces | recLineGen(piecesNotH >>> 9, myOcc, occ, direction);
-        if (direction == Direction.SouthWest) return notAtkMyPieces | recLineGen(piecesNotA >>> 7, myOcc, occ, direction);
-        else return notAtkMyPieces | recLineGen(piecesNotA << 9, myOcc, occ, direction);
     }
 
     ///true -> legal move | false -> illegal move
