@@ -3,13 +3,13 @@ import java.lang.invoke.WrongMethodTypeException;
 public class LegalMoves {
 
     private final Bitboards bitboards;
-    private AttackPatterns attackPatterns;
     private final PieceType[] pieceTypes;
+    private final AttackPatterns attackPatterns;
 
     public LegalMoves(Bitboards bitboards) {
         this.bitboards = bitboards;
         this.pieceTypes = PieceType.values();
-        //this.attackPatterns = new AttackPatterns(bitboards);
+        this.attackPatterns = new AttackPatterns(this.bitboards);
     }
 
     public long legalMoves(long pos, Color color) throws NoPieceAtSquareException {
@@ -106,66 +106,10 @@ public class LegalMoves {
         long myOcc = bitboards.getColorOcc(color);
         long enemyOcc = bitboards.getColorOcc(color.other());
 
-        long NE = (pos & ~hFile) << 7;
-        long SE = (pos & ~hFile) >>> 9;
-        long SW = (pos & ~aFile) >>> 7;
-        long NW = (pos & ~aFile) << 9;
-
-        boolean legality;
-
-        while ((NE | SE | SW | NW) != 0x0L) {
-
-            if (NE == 0x0L);
-            else if ((NE & myOcc) != 0x0L) NE = 0x0L;
-            else if ((NE & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Bishop, pos, NE);
-                legalMoves |= (legality)? NE : 0x0L;
-                NE = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Bishop, pos, NE);
-                legalMoves |= (legality)? NE : 0x0L;
-                NE = (NE & ~hFile) << 7;
-            }
-
-            if (SE == 0x0L);
-            else if ((SE & myOcc) != 0x0L) SE = 0x0L;
-            else if ((SE & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Bishop, pos, SE);
-                legalMoves |= (legality)? SE : 0x0L;
-                SE = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Bishop, pos, SE);
-                legalMoves |= (legality)? SE : 0x0L;
-                SE = (SE & ~hFile) >>> 9;
-            }
-
-            if (SW == 0x0L);
-            else if ((SW & myOcc) != 0x0L) SW = 0x0L;
-            else if ((SW & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Bishop, pos, SW);
-                legalMoves |= (legality)? SW : 0x0L;
-                SW = 0x0L;
-            } else {
-                legality = quietMoveLegality(color, PieceType.Bishop, pos, SW);
-                legalMoves |= (legality)? SW : 0x0L;
-                SW = (SW & ~aFile) >>> 7;
-            }
-
-            if (NW == 0x0L);
-            else if ((NW & myOcc) != 0x0L) NW = 0x0L;
-            else if ((NW & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Bishop, pos, NW);
-                legalMoves |= (legality)? NW : 0x0L;
-                NW = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Bishop, pos, NW);
-                legalMoves |= (legality)? NW : 0x0L;
-                NW = (NW & ~aFile) << 9;
-            }
-        }
+        legalMoves |= legalLineGen(pos, color, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.NorthEast);
+        legalMoves |= legalLineGen(pos, color, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.SouthEast);
+        legalMoves |= legalLineGen(pos, color, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.SouthWest);
+        legalMoves |= legalLineGen(pos, color, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.NorthWest);
 
         return legalMoves;
     }
@@ -179,67 +123,10 @@ public class LegalMoves {
         long myOcc = bitboards.getColorOcc(color);
         long enemyOcc = bitboards.getColorOcc(color.other());
 
-        long N = pos << 8;
-        long E = (pos & ~hFile) >>> 1;
-        long S = pos >>> 8;
-        long W = (pos & ~aFile) << 1;
-
-        boolean legality;
-
-        while ((N | E | S | W) != 0x0L) {
-
-            if (N == 0x0L);
-            else if ((N & myOcc) != 0x0L) N = 0x0L;
-            else if ((N & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Rook, pos, N);
-                legalMoves |= (legality)? N : 0x0L;
-                N = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Rook, pos, N);
-                legalMoves |= (legality)? N : 0x0L;
-                N <<= 8;
-            }
-
-            if (E == 0x0L);
-            else if ((E & myOcc) != 0x0L) E = 0x0L;
-            else if ((E & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Rook, pos, E);
-                legalMoves |= (legality)? E : 0x0L;
-                E = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Rook, pos, E);
-                legalMoves |= (legality)? E : 0x0L;
-                E = (E & ~hFile) >> 1;
-            }
-
-            if (S == 0x0L);
-            else if ((S & myOcc) != 0x0L) S = 0x0L;
-            else if ((S & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Rook, pos, S);
-                legalMoves |= (legality)? S : 0x0L;
-                S = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Rook, pos, S);
-                legalMoves |= (legality)? S : 0x0L;
-                S >>>= 8;
-            }
-
-            if (W == 0x0L);
-            else if ((W & myOcc) != 0x0L) W = 0x0L;
-            else if ((W & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Rook, pos, W);
-                legalMoves |= (legality)? W : 0x0L;
-                W = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Rook, pos, W);
-                legalMoves |= (legality)? W : 0x0L;
-                W = (W & ~aFile) << 1;
-            }
-        }
+        legalMoves |= legalLineGen(pos, color, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.North);
+        legalMoves |= legalLineGen(pos, color, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.East);
+        legalMoves |= legalLineGen(pos, color, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.South);
+        legalMoves |= legalLineGen(pos, color, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.West);
 
         return legalMoves;
     }
@@ -253,147 +140,82 @@ public class LegalMoves {
         long myOcc = bitboards.getColorOcc(color);
         long enemyOcc = bitboards.getColorOcc(color.other());
 
-        long N = pos << 8;
-        long E = (pos & ~hFile) >>> 1;
-        long S = pos >>> 8;
-        long W = (pos & ~aFile) << 1;
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.North);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.East);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.South);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.West);
 
-        long NE = (pos & ~hFile) << 7;
-        long SE = (pos & ~hFile) >>> 9;
-        long SW = (pos & ~aFile) >>> 7;
-        long NW = (pos & ~aFile) << 9;
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.NorthEast);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.SouthEast);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.SouthWest);
+        legalMoves |= legalLineGen(pos, color, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.NorthWest);
 
+        return legalMoves;
+    }
+
+    private long legalLineGen(long pos, Color color, PieceType pieceType, long myOcc, long enemyOcc, long aFile, long hFile, Direction direction) {
+
+        long legalMoves = 0x0L;
+
+        long frontier = step(pos, aFile, hFile, direction);
         boolean legality;
 
-        while ((N | NE | E | SE | S | SW | W | NW) != 0x0L) {
+        while (frontier != 0x0L) {
 
-            if (N == 0x0L);
-            else if ((N & myOcc) != 0x0L) N = 0x0L;
-            else if ((N & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, N);
-                legalMoves |= (legality)? N : 0x0L;
-                N = 0x0L;
+            if ((frontier & myOcc) != 0x0L) break;
+            else if ((frontier & enemyOcc) != 0x0L) {
+
+                legality = captureLegality(color, pieceType, pos, frontier);
+                legalMoves |= (legality)? frontier : 0x0L;
+                break;
+
             }
             else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, N);
-                legalMoves |= (legality)? N : 0x0L;
-                N <<= 8;
-            }
 
-            if (NE == 0x0L);
-            else if ((NE & myOcc) != 0x0L) NE = 0x0L;
-            else if ((NE & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, NE);
-                legalMoves |= (legality)? NE : 0x0L;
-                NE = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, NE);
-                legalMoves |= (legality)? NE : 0x0L;
-                NE = (NE & ~hFile) << 7;
-            }
-
-            if (E == 0x0L);
-            else if ((E & myOcc) != 0x0L) E = 0x0L;
-            else if ((E & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, E);
-                legalMoves |= (legality)? E : 0x0L;
-                E = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, E);
-                legalMoves |= (legality)? E : 0x0L;
-                E = (E & ~hFile) >> 1;
-            }
-
-            if (SE == 0x0L);
-            else if ((SE & myOcc) != 0x0L) SE = 0x0L;
-            else if ((SE & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, SE);
-                legalMoves |= (legality)? SE : 0x0L;
-                SE = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, SE);
-                legalMoves |= (legality)? SE : 0x0L;
-                SE = (SE & ~hFile) >>> 9;
-            }
-
-            if (S == 0x0L);
-            else if ((S & myOcc) != 0x0L) S = 0x0L;
-            else if ((S & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, S);
-                legalMoves |= (legality)? S : 0x0L;
-                S = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, S);
-                legalMoves |= (legality)? S : 0x0L;
-                S >>>= 8;
-            }
-
-            if (SW == 0x0L);
-            else if ((SW & myOcc) != 0x0L) SW = 0x0L;
-            else if ((SW & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, SW);
-                legalMoves |= (legality)? SW : 0x0L;
-                SW = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, SW);
-                legalMoves |= (legality)? SW : 0x0L;
-                SW = (SW & ~aFile) >>> 7;
-            }
-
-            if (W == 0x0L);
-            else if ((W & myOcc) != 0x0L) W = 0x0L;
-            else if ((W & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, W);
-                legalMoves |= (legality)? W : 0x0L;
-                W = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, W);
-                legalMoves |= (legality)? W : 0x0L;
-                W = (W & ~aFile) << 1;
-            }
-
-            if (NW == 0x0L);
-            else if ((NW & myOcc) != 0x0L) NW = 0x0L;
-            else if ((NW & enemyOcc) != 0x0L) {
-                legality = captureLegality(color, PieceType.Queen, pos, NW);
-                legalMoves |= (legality)? NW : 0x0L;
-                NW = 0x0L;
-            }
-            else {
-                legality = quietMoveLegality(color, PieceType.Queen, pos, NW);
-                legalMoves |= (legality)? NW : 0x0L;
-                NW = (NW & ~aFile) << 9;
+                legality = quietMoveLegality(color, pieceType, pos, frontier);
+                legalMoves |= (legality)? frontier : 0x0L;
+                frontier = step(frontier, aFile, hFile, direction);
             }
         }
 
         return legalMoves;
     }
 
-    // TODO: create a new method so bishop/rook/queenLegalMoves doesnt use duplicate code and abstactify Code
+    private long step(long pos, long aFile, long hFile, Direction direction) {
+
+        long step = 0x0L;
+
+        switch (direction) {
+
+            case North -> step = pos << 8;
+            case East -> step = (pos & ~hFile) >>> 1;
+            case South -> step = pos >>> 8;
+            case West -> step = (pos & ~aFile) << 1;
+
+            case NorthEast -> step = (pos & ~hFile) << 7;
+            case SouthEast -> step = (pos & ~hFile) >>> 9;
+            case SouthWest -> step = (pos & ~aFile) >>> 7;
+            case NorthWest -> step = (pos & ~aFile) << 9;
+        }
+
+        return step;
+    }
 
     // TODO: create a working kingLegalMoves Method
     private long kingLegalMoves(long pos, Color color) {
 
-        long myOcc = bitboards.getColorOcc(color);
-        long kingNotA = pos & ~bitboards.getFile(0);
-        long kingNotH = pos & ~bitboards.getFile(7);
+        long legalMoves = 0x0L;
 
-        return pos << 8
-                | kingNotH << 7
-                | kingNotH >>> 1
-                | kingNotH >>> 9
-                | pos >>> 8
-                | kingNotA >>> 7
-                | kingNotA << 1
-                | kingNotA << 9;
+        long myOcc = bitboards.getColorOcc(color);
+        long enemyOcc = bitboards.getColorOcc(color.other());
+
+        long aFile = bitboards.getFile(0);
+        long hFile = bitboards.getFile(7);
+
+         return 0x0L;
     }
 
+    // TODO: collapse all MoveLegality methods into one
     ///true -> legal move | false -> illegal move
     private boolean quietMoveLegality (Color color, PieceType pieceType, long from, long to) {
 
@@ -497,6 +319,5 @@ public class LegalMoves {
 
         return (enemyAtkBoard & myKing) != 0;
     }
-
 
 }
