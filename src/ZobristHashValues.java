@@ -13,4 +13,17 @@ public class ZobristHashValues {
             zobristHashValues[i] = random.nextLong();
         }
     }
+
+    public long getHashCode(Color color, PieceType pieceType, long pos) {
+
+        if (pos == 0L || (pos & (pos - 1)) != 0L) throw new IllegalArgumentException("pos must have exactly one bit set");
+
+        int colorAdj = (color == Color.White)? 0 : 6;
+        int pieceAdj = pieceType.ordinal();
+
+        int index = (pieceAdj + colorAdj) * 64;
+        index += Long.numberOfTrailingZeros(pos);
+
+        return zobristHashValues[index];
+    }
 }

@@ -53,8 +53,8 @@ public class LegalMoves {
 
         one = quietMoveLegality(Color.White, PieceType.Pawn, pos, one)? one : 0x0L;
         two = quietMoveLegality(Color.White, PieceType.Pawn, pos, two)? two : 0x0L;
-        NE = quietMoveLegality(Color.White, PieceType.Pawn, pos, NE)? NE : 0x0L;
-        NW = quietMoveLegality(Color.White, PieceType.Pawn, pos, NW)? NW : 0x0L;
+        NE = enPassantCaptureLegality(Color.White, PieceType.Pawn, pos, NE)? NE : 0x0L;
+        NW = enPassantCaptureLegality(Color.White, PieceType.Pawn, pos, NW)? NW : 0x0L;
 
         return one | two | NE | NW;
     }
@@ -69,6 +69,11 @@ public class LegalMoves {
         long two = ((one >>> 8) & bitboards.getRank(4)) & ~occ;
         long SE = ((pos & ~bitboards.getFile(7)) >>> 9) & (enemyOcc | enPassant);
         long SW = ((pos & ~bitboards.getFile(0)) >>> 7) & (enemyOcc | enPassant);
+
+        one = quietMoveLegality(Color.Black, PieceType.Pawn, pos, one)? one : 0x0L;
+        two = quietMoveLegality(Color.Black, PieceType.Pawn, pos, two)? two : 0x0L;
+        SE = enPassantCaptureLegality(Color.Black, PieceType.Pawn, pos, SE)? SE : 0x0L;
+        SW = enPassantCaptureLegality(Color.Black, PieceType.Pawn, pos, SW)? SW : 0x0L;
 
         return one | two | SE | SW;
     }
@@ -238,6 +243,7 @@ public class LegalMoves {
 
             if (direction == Direction.East && !kingMoved && !hRookMoved && legality && !inCheck) {
 
+                if ((bitboards.getPieces(color, PieceType.Rook) & hFile) == 0x0L) continue;
                 long castlingRight = direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc);
 
                 legality = castlingRight != 0x0L && castlingLegality(color, pos, castlingRight, hFile);
@@ -245,6 +251,8 @@ public class LegalMoves {
             }
 
             if (direction == Direction.West && !kingMoved && !aRookMoved && legality && !inCheck) {
+
+                if ((bitboards.getPieces(color, PieceType.Rook) & aFile) == 0x0L) continue;
 
                 long castlingLeft = (direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc));
                 long rightOfRook = direction.go(castlingLeft, aFile, hFile) & ~(myOcc | enemyOcc);
