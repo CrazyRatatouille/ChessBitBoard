@@ -212,7 +212,50 @@ public class LegalMoves {
         long aFile = bitboards.getFile(0);
         long hFile = bitboards.getFile(7);
 
-         return 0x0L;
+        boolean kingMoved = bitboards.kingMoved(color);
+        boolean aRookMoved = bitboards.rookMoved(color, aFile);
+        boolean hRookMoved = bitboards.rookMoved(color, hFile);
+        boolean inCheck = checkForCheck(color, color.other());
+
+        for (Direction direction : Direction.values()) {
+
+            boolean legality;
+
+            long oneStep = direction.go(pos, aFile, hFile);
+
+            if ((oneStep & myOcc) != 0) continue;
+            if ((oneStep & enemyOcc) != 0) {
+
+                legality = captureLegality(color, PieceType.King, pos, oneStep);
+                legalMoves |= (legality)? oneStep : 0x0L;
+                continue;
+            }
+            else {
+
+                legality = quietMoveLegality(color, PieceType.King, pos, oneStep);
+                legalMoves |= (legality)? oneStep : 0x0L;
+            }
+
+            if (direction == Direction.East && !kingMoved && !hRookMoved && legality && !inCheck) {
+
+                long castlingRight = direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc);
+
+                legality = castlingRight != 0x0L && castlingLegality(color, pos, castlingRight, hFile);
+                legalMoves |= legality? castlingRight : 0x0L;
+            }
+
+            if (direction == Direction.West && !kingMoved && !aRookMoved && legality && !inCheck) {
+
+                long castlingLeft = (direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc));
+                long rightOfRook = direction.go(castlingLeft, aFile, hFile) & ~(myOcc | enemyOcc);
+                boolean emptyPath = (castlingLeft != 0x0L && rightOfRook != 0x0L);
+
+                legality = emptyPath && castlingLegality(color, pos, castlingLeft, aFile);
+                legalMoves |= legality? castlingLeft : 0x0L;
+            }
+        }
+
+         return legalMoves;
     }
 
     // TODO: collapse all MoveLegality methods into one
