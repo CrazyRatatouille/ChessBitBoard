@@ -69,9 +69,9 @@ public class Bitboards {
 
     ///returns the current bitboard for each PieceType (0-5) White and (6 - 11) Black
     ///0/6 Pawns  |  1/7 Knights  |  2/8 Bishops  |  3/9 Rooks  |  4/10 Queens  |  5/11 Kings
-    public long getPieces(Color color, PieceType pieceType) {
+    public long getPieces(SideColor sideColor, PieceType pieceType) {
 
-        int indAdj = (color == Color.Black)? 0 : 6;
+        int indAdj = (sideColor == SideColor.Black)? 0 : 6;
         int piece;
 
         if (pieceType == PieceType.Pawn) piece = 0;
@@ -84,19 +84,19 @@ public class Bitboards {
         return Pieces[piece + indAdj];
     }
 
-    public long getColorOcc(Color color) {
+    public long getColorOcc(SideColor sideColor) {
 
-        return getPieces(color, PieceType.Pawn)
-                | getPieces(color, PieceType.Knight)
-                | getPieces(color, PieceType.Bishop)
-                | getPieces(color, PieceType.Rook)
-                | getPieces(color, PieceType.Queen)
-                | getPieces(color, PieceType.King);
+        return getPieces(sideColor, PieceType.Pawn)
+                | getPieces(sideColor, PieceType.Knight)
+                | getPieces(sideColor, PieceType.Bishop)
+                | getPieces(sideColor, PieceType.Rook)
+                | getPieces(sideColor, PieceType.Queen)
+                | getPieces(sideColor, PieceType.King);
     }
 
     public long getOcc() {
 
-        return getColorOcc(Color.White) | getColorOcc(Color.Black);
+        return getColorOcc(SideColor.White) | getColorOcc(SideColor.Black);
     }
 
     public long getEnPassant() {
@@ -112,35 +112,35 @@ public class Bitboards {
         this.enPassant = newEnPassant;
     }
 
-    public void setPieces(Color color, PieceType pieceType, long from, long to) {
+    public void setPieces(SideColor sideColor, PieceType pieceType, long from, long to) {
 
-        int ind = (color == Color.White)? 0 : 6;
+        int ind = (sideColor == SideColor.White)? 0 : 6;
         ind += pieceType.ordinal();
 
         Pieces[ind] = (Pieces[ind] & ~from) | to;
     }
 
-    public void setPieces(Color color, PieceType pieceType, long newPiece) {
+    public void setPieces(SideColor sideColor, PieceType pieceType, long newPiece) {
 
-        int ind = (color == Color.White)? 0 : 6;
+        int ind = (sideColor == SideColor.White)? 0 : 6;
         ind += pieceType.ordinal();
 
         Pieces[ind] |= newPiece;
     }
 
     /// true -> king has moved already | king -> rook is yet to move
-    public boolean kingMoved(Color color) {
+    public boolean kingMoved(SideColor sideColor) {
 
-        if (color == Color.White) return wKingMoved;
+        if (sideColor == SideColor.White) return wKingMoved;
         return bKingMoved;
     }
 
     /// true -> rook has moved already | false -> rook is yet to move
-    public boolean rookMoved(Color color, long file) {
+    public boolean rookMoved(SideColor sideColor, long file) {
 
         if (file != aFile && file != (aFile) >>> 7) throw new IllegalArgumentException("file must be a/h-File!");
 
-        if (color == Color.White) {
+        if (sideColor == SideColor.White) {
             if (file == aFile) return a1RookMoved;
             return h1RookMoved;
         }
@@ -148,9 +148,9 @@ public class Bitboards {
         return h8RookMoved;
     }
 
-    public void changeKingCastlingRights(Color color) {
+    public void changeKingCastlingRights(SideColor sideColor) {
 
-        if (color == Color.White) {
+        if (sideColor == SideColor.White) {
             wKingMoved = !wKingMoved;
             return;
         }
@@ -158,7 +158,7 @@ public class Bitboards {
         bKingMoved = !bKingMoved;
     }
 
-    public void changeRookCastlingRights(Color color, long file) {
+    public void changeRookCastlingRights(SideColor sideColor, long file) {
 
         long RookOnA = file & aFile;
         long RookOnH = file & (aFile >>> 7);
@@ -168,10 +168,24 @@ public class Bitboards {
         }
 
         if (RookOnA != 0x0L) {
-            if (color == Color.White) a1RookMoved = !a1RookMoved;
+            if (sideColor == SideColor.White) a1RookMoved = !a1RookMoved;
             else a8RookMoved = !a8RookMoved;
         }
-        else if (color == Color.White) h1RookMoved = !h1RookMoved;
+        else if (sideColor == SideColor.White) h1RookMoved = !h1RookMoved;
         else h8RookMoved = !h8RookMoved;
+    }
+
+    public SideColor findPosInfo(long pos, PieceType[] pieceType) {
+
+        for (int i = 0; i < Pieces.length; i++) {
+
+            if ((pos & Pieces[i]) != 0x0L) {
+
+                pieceType[0] = PieceType.values()[i % 6];
+                return (i < 6)? SideColor.White : SideColor.Black;
+            }
+        }
+
+        return null;
     }
 }

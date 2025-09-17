@@ -7,34 +7,34 @@ public class AttackPatterns {
         this.bitboards = bitboards;
     }
 
-    public long getFullAtkBoard (Color color) {
+    public long getFullAtkBoard (SideColor sideColor) {
 
         long fullAtkBoard = 0x0L;
 
         for (PieceType pieceType : pieces) {
-           fullAtkBoard |= getAttackPattern(color, pieceType);
+           fullAtkBoard |= getAttackPattern(sideColor, pieceType);
         }
 
         return fullAtkBoard;
     }
 
-    private long getAttackPattern (Color color, PieceType pieceType) {
+    private long getAttackPattern (SideColor sideColor, PieceType pieceType) {
 
         if (pieceType == PieceType.Pawn) {
-            if (color == Color.White) return wPawnAtkPattern(color);
-            return bPawnAtkPattern(color);
+            if (sideColor == SideColor.White) return wPawnAtkPattern(sideColor);
+            return bPawnAtkPattern(sideColor);
         }
 
-        if (pieceType == PieceType.Knight) return knightAtkPattern(color);
-        if (pieceType == PieceType.Bishop) return bishopAtkPattern(color);
-        if (pieceType == PieceType.Rook) return rookAtkPattern(color);
-        if (pieceType == PieceType.Queen) return queenAtkPattern(color);
-        else return kingAtkPattern(color);
+        if (pieceType == PieceType.Knight) return knightAtkPattern(sideColor);
+        if (pieceType == PieceType.Bishop) return bishopAtkPattern(sideColor);
+        if (pieceType == PieceType.Rook) return rookAtkPattern(sideColor);
+        if (pieceType == PieceType.Queen) return queenAtkPattern(sideColor);
+        else return kingAtkPattern(sideColor);
     }
 
-    private long wPawnAtkPattern(Color color) {
+    private long wPawnAtkPattern(SideColor sideColor) {
 
-        long pawns = bitboards.getPieces(color, PieceType.Pawn);
+        long pawns = bitboards.getPieces(sideColor, PieceType.Pawn);
 
         long aFile = bitboards.getFile(0);
         long hFile = bitboards.getFile(7);
@@ -42,9 +42,9 @@ public class AttackPatterns {
         return  ((pawns & ~aFile) << 9) | ((pawns & ~hFile) << 7);
     }
 
-    private long bPawnAtkPattern(Color color) {
+    private long bPawnAtkPattern(SideColor sideColor) {
 
-        long pawns = bitboards.getPieces(color, PieceType.Pawn);
+        long pawns = bitboards.getPieces(sideColor, PieceType.Pawn);
 
         long aFile = bitboards.getFile(0);
         long hFile = bitboards.getFile(7);
@@ -52,9 +52,9 @@ public class AttackPatterns {
         return  ((pawns & ~aFile) >>> 7) | ((pawns & ~hFile) >>> 9);
     }
 
-    private long knightAtkPattern(Color color) {
+    private long knightAtkPattern(SideColor sideColor) {
 
-        long knights = bitboards.getPieces(color, PieceType.Knight);
+        long knights = bitboards.getPieces(sideColor, PieceType.Knight);
 
         long aFile = bitboards.getFile(0);
         long bFile = bitboards.getFile(1);
@@ -72,12 +72,12 @@ public class AttackPatterns {
                 | (knights & ~hFile) >>> 17;
     }
 
-    private long bishopAtkPattern(Color color) {
+    private long bishopAtkPattern(SideColor sideColor) {
 
-        long bishops = bitboards.getPieces(color, PieceType.Bishop);
+        long bishops = bitboards.getPieces(sideColor, PieceType.Bishop);
         long bishopsNotA = bishops & ~bitboards.getFile(0);
         long bishopsNotH = bishops & ~bitboards.getFile(7);
-        long myOcc = bitboards.getColorOcc(color);
+        long myOcc = bitboards.getColorOcc(sideColor);
         long occ = bitboards.getOcc();
 
         return recLineGen(bishopsNotH << 7, myOcc, occ, Direction.NorthEast)
@@ -86,12 +86,12 @@ public class AttackPatterns {
                 | recLineGen(bishopsNotA << 9, myOcc, occ, Direction.NorthWest);
     }
 
-    private long rookAtkPattern(Color color) {
+    private long rookAtkPattern(SideColor sideColor) {
 
-        long rooks = bitboards.getPieces(color, PieceType.Rook);
+        long rooks = bitboards.getPieces(sideColor, PieceType.Rook);
         long rooksNotA = rooks & ~bitboards.getFile(0);
         long rooksNotH = rooks & ~bitboards.getFile(7);
-        long myOcc = bitboards.getColorOcc(color);
+        long myOcc = bitboards.getColorOcc(sideColor);
         long occ = bitboards.getOcc();
 
         return recLineGen(rooks << 8, myOcc, occ, Direction.North)
@@ -100,12 +100,12 @@ public class AttackPatterns {
                 | recLineGen(rooksNotA << 1, myOcc, occ, Direction.West);
     }
 
-    private long queenAtkPattern(Color color) {
+    private long queenAtkPattern(SideColor sideColor) {
 
-        long queens = bitboards.getPieces(color, PieceType.Queen);
+        long queens = bitboards.getPieces(sideColor, PieceType.Queen);
         long queensNotA = queens & ~bitboards.getFile(0);
         long queensNotH = queens & ~bitboards.getFile(7);
-        long myOcc = bitboards.getColorOcc(color);
+        long myOcc = bitboards.getColorOcc(sideColor);
         long occ = bitboards.getOcc();
 
         return recLineGen(queens << 8, myOcc, occ, Direction.North)
@@ -119,9 +119,9 @@ public class AttackPatterns {
                 | recLineGen(queensNotA << 9, myOcc, occ, Direction.NorthWest);
     }
 
-    private long kingAtkPattern(Color color) {
+    private long kingAtkPattern(SideColor sideColor) {
 
-        long king = bitboards.getPieces(color, PieceType.King);
+        long king = bitboards.getPieces(sideColor, PieceType.King);
         long kingNotA = king & ~bitboards.getFile(0);
         long kingNotH = king & ~bitboards.getFile(7);
 

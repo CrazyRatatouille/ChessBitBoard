@@ -14,11 +14,11 @@ public class ZobristHashValues {
         }
     }
 
-    public long getHashCode(Color color, PieceType pieceType, long pos) {
+    public long getHashCode(SideColor sideColor, PieceType pieceType, long pos) {
 
         if (pos == 0L || (pos & (pos - 1)) != 0L) throw new IllegalArgumentException("pos must have exactly one bit set");
 
-        int colorAdj = (color == Color.White)? 0 : 6;
+        int colorAdj = (sideColor == SideColor.White)? 0 : 6;
         int pieceAdj = pieceType.ordinal();
 
         int index = (pieceAdj + colorAdj) * 64;

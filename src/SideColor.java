@@ -1,7 +1,7 @@
-public enum Color {
+public enum SideColor {
     White, Black;
 
-    public Color other() {
+    public SideColor other() {
         return switch (this) {
             case White -> Black;
             case Black -> White;
