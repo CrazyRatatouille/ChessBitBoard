@@ -1,4 +1,5 @@
 import codedraw.CodeDraw;
+import codedraw.EventScanner;
 import codedraw.Image;
 import codedraw.Palette;
 
@@ -26,6 +27,8 @@ public class BoardDrawer {
 
     public void drawBoard () {
 
+        myObj.clear();
+
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
 
@@ -50,7 +53,48 @@ public class BoardDrawer {
         }
 
         myObj.show();
-
     }
 
+    public void drawPieceMoves (long legalMoves) {
+
+        if (Long.bitCount(legalMoves) == 0) return;
+
+        int iterCount = Long.bitCount(legalMoves);
+        myObj.setColor(myGreen);
+
+        double radius = tileSize / 5d;
+
+        for (int i = 0; i < iterCount; i++) {
+
+            int leadingZeroes = Long.numberOfLeadingZeros(legalMoves);
+
+            int x = (int)(((leadingZeroes % 8) + .5d) * tileSize);
+            int y = (int)(((leadingZeroes / 8) + .5d) * tileSize);
+
+            myObj.fillCircle(x, y, radius);
+
+            legalMoves <<= leadingZeroes + 1;
+            legalMoves >>>= leadingZeroes + 1;
+        }
+
+        myObj.show();
+    }
+
+    public long getPos (int x, int y) {
+
+        int rankIndex = 7 - (y / tileSize);
+
+        long rank = bitboard.getRank(x / tileSize);
+        long file = bitboard.getRank(rankIndex);
+
+        return rank | file;
+    }
+
+    public int getCanvasSize() {
+        return canvasSize;
+    }
+
+    public EventScanner getEventScanner() {
+        return myObj.getEventScanner();
+    }
 }
