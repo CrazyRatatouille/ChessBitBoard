@@ -1,15 +1,28 @@
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
-        Bitboards bitboards = new Bitboards();
-        AttackPatterns attackPatterns = new AttackPatterns(bitboards);
-        BoardDrawer boardDrawer = new BoardDrawer(bitboards, 600);
-        LegalMoves legalMoves = new LegalMoves(bitboards);
-        Controller controller = new Controller(bitboards, boardDrawer, legalMoves);
+        BitboardsOld bitboardsOld = new BitboardsOld();
+        AttackPatternsOld attackPatternsOld = new AttackPatternsOld(bitboardsOld);
+        BoardDrawerOld boardDrawerOld = new BoardDrawerOld(bitboardsOld, 600);
+        LegalMovesOld legalMovesOld = new LegalMovesOld(bitboardsOld);
+        ControllerOld controllerOld = new ControllerOld(bitboardsOld, boardDrawerOld, legalMovesOld);
+        boolean gameOver = false;
 
-        boardDrawer.drawBoard();
-        boardDrawer.drawPieceMoves(0x11L);
+        boardDrawerOld.drawBoard();
 
+
+        try {
+
+            while (!gameOver) {
+                boardDrawerOld.drawBoard();
+                controllerOld.makeTurn();
+                gameOver = legalMovesOld.gameOver(SideColor.White);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        boardDrawerOld.close();
     }
 }

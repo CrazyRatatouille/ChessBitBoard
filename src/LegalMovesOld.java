@@ -1,25 +1,25 @@
 import java.lang.invoke.WrongMethodTypeException;
 
-public class LegalMoves {
+public class LegalMovesOld {
 
-    private final Bitboards bitboards;
+    private final BitboardsOld bitboardsOld;
     private final PieceType[] pieceTypes;
-    private final AttackPatterns attackPatterns;
+    private final AttackPatternsOld attackPatternsOld;
 
-    public LegalMoves(Bitboards bitboards) {
-        this.bitboards = bitboards;
+    public LegalMovesOld(BitboardsOld bitboardsOld) {
+        this.bitboardsOld = bitboardsOld;
         this.pieceTypes = PieceType.values();
-        this.attackPatterns = new AttackPatterns(this.bitboards);
+        this.attackPatternsOld = new AttackPatternsOld(this.bitboardsOld);
     }
 
-    public long legalMoves(long pos, SideColor sideColor) throws NoPieceAtSquareException {
+    public long legalMoves(long pos, SideColor sideColor) {
 
         PieceType pieceType = null;
-        long legalMoves;
+        long legalMoves = 0;
 
         for (PieceType p : pieceTypes) {
 
-            long myPieces = bitboards.getPieces(sideColor, p);
+            long myPieces = bitboardsOld.getPieces(sideColor, p);
 
             if ((myPieces & pos) != 0x0L) {
                 pieceType = p;
@@ -34,7 +34,7 @@ public class LegalMoves {
             case Rook -> legalMoves = rookLegalMoves(pos, sideColor);
             case Queen -> legalMoves = queenLegalMoves(pos, sideColor);
             case King -> legalMoves = kingLegalMoves(pos, sideColor);
-            case null -> {throw new NoPieceAtSquareException("Not your Piece selected!");}
+            case null -> legalMoves = 0x0L;
         }
 
         return legalMoves;
@@ -42,14 +42,14 @@ public class LegalMoves {
 
     private long wPawnLegalMoves(long pos) {
 
-        long enemyOcc = bitboards.getColorOcc(SideColor.Black);
-        long occ = bitboards.getOcc();
-        long enPassant = bitboards.getEnPassant();
+        long enemyOcc = bitboardsOld.getColorOcc(SideColor.Black);
+        long occ = bitboardsOld.getOcc();
+        long enPassant = bitboardsOld.getEnPassant();
 
         long one = (pos << 8) & ~occ;
-        long two = ((one << 8) & bitboards.getRank(3)) & ~occ;
-        long NE = ((pos & ~bitboards.getFile(7)) << 7) & (enemyOcc | enPassant);
-        long NW = ((pos & ~bitboards.getFile(0)) << 9) & (enemyOcc | enPassant);
+        long two = ((one << 8) & bitboardsOld.getRank(3)) & ~occ;
+        long NE = ((pos & ~bitboardsOld.getFile(7)) << 7) & (enemyOcc | enPassant);
+        long NW = ((pos & ~bitboardsOld.getFile(0)) << 9) & (enemyOcc | enPassant);
 
         one = quietMoveLegality(SideColor.White, PieceType.Pawn, pos, one)? one : 0x0L;
         two = quietMoveLegality(SideColor.White, PieceType.Pawn, pos, two)? two : 0x0L;
@@ -61,14 +61,14 @@ public class LegalMoves {
 
     private long bPawnLegalMoves(long pos) {
 
-        long enemyOcc = bitboards.getColorOcc(SideColor.White);
-        long occ = enemyOcc | bitboards.getColorOcc(SideColor.Black);
-        long enPassant = bitboards.getEnPassant();
+        long enemyOcc = bitboardsOld.getColorOcc(SideColor.White);
+        long occ = enemyOcc | bitboardsOld.getColorOcc(SideColor.Black);
+        long enPassant = bitboardsOld.getEnPassant();
 
         long one = (pos >>> 8) & ~occ;
-        long two = ((one >>> 8) & bitboards.getRank(4)) & ~occ;
-        long SE = ((pos & ~bitboards.getFile(7)) >>> 9) & (enemyOcc | enPassant);
-        long SW = ((pos & ~bitboards.getFile(0)) >>> 7) & (enemyOcc | enPassant);
+        long two = ((one >>> 8) & bitboardsOld.getRank(4)) & ~occ;
+        long SE = ((pos & ~bitboardsOld.getFile(7)) >>> 9) & (enemyOcc | enPassant);
+        long SW = ((pos & ~bitboardsOld.getFile(0)) >>> 7) & (enemyOcc | enPassant);
 
         one = quietMoveLegality(SideColor.Black, PieceType.Pawn, pos, one)? one : 0x0L;
         two = quietMoveLegality(SideColor.Black, PieceType.Pawn, pos, two)? two : 0x0L;
@@ -81,14 +81,14 @@ public class LegalMoves {
     private long knightLegalMoves(long pos, SideColor sideColor) {
 
 
-        long aFile = bitboards.getFile(0);
+        long aFile = bitboardsOld.getFile(0);
         long abFiles = aFile | aFile >>> 1;
 
         long knightNotA = pos & ~aFile;
         long knightNotAB = pos & ~abFiles;
         long knightNotGH = pos & ~(abFiles >>> 6);
         long knightNotH = pos & ~(aFile >>> 7);
-        long myOcc = bitboards.getColorOcc(sideColor);
+        long myOcc = bitboardsOld.getColorOcc(sideColor);
 
 
         return (knightNotA & ~myOcc) << 17
@@ -105,16 +105,16 @@ public class LegalMoves {
     private long bishopLegalMoves(long pos, SideColor sideColor) {
 
         long legalMoves = 0x0L;
-        long aFile = bitboards.getFile(0);
-        long hFile = bitboards.getFile(7);
+        long aFile = bitboardsOld.getFile(0);
+        long hFile = bitboardsOld.getFile(7);
 
-        long myOcc = bitboards.getColorOcc(sideColor);
-        long enemyOcc = bitboards.getColorOcc(sideColor.other());
+        long myOcc = bitboardsOld.getColorOcc(sideColor);
+        long enemyOcc = bitboardsOld.getColorOcc(sideColor.other());
 
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.NorthEast);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.SouthEast);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.SouthWest);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, Direction.NorthWest);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, DirectionOld.NorthEast);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, DirectionOld.SouthEast);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, DirectionOld.SouthWest);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Bishop, myOcc, enemyOcc, aFile, hFile, DirectionOld.NorthWest);
 
         return legalMoves;
     }
@@ -122,16 +122,16 @@ public class LegalMoves {
     private long rookLegalMoves(long pos, SideColor sideColor) {
 
         long legalMoves = 0x0L;
-        long aFile = bitboards.getFile(0);
-        long hFile = bitboards.getFile(7);
+        long aFile = bitboardsOld.getFile(0);
+        long hFile = bitboardsOld.getFile(7);
 
-        long myOcc = bitboards.getColorOcc(sideColor);
-        long enemyOcc = bitboards.getColorOcc(sideColor.other());
+        long myOcc = bitboardsOld.getColorOcc(sideColor);
+        long enemyOcc = bitboardsOld.getColorOcc(sideColor.other());
 
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.North);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.East);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.South);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, Direction.West);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, DirectionOld.North);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, DirectionOld.East);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, DirectionOld.South);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Rook, myOcc, enemyOcc, aFile, hFile, DirectionOld.West);
 
         return legalMoves;
     }
@@ -139,26 +139,26 @@ public class LegalMoves {
     private long queenLegalMoves(long pos, SideColor sideColor) {
 
         long legalMoves = 0x0L;
-        long aFile = bitboards.getFile(0);
-        long hFile = bitboards.getFile(7);
+        long aFile = bitboardsOld.getFile(0);
+        long hFile = bitboardsOld.getFile(7);
 
-        long myOcc = bitboards.getColorOcc(sideColor);
-        long enemyOcc = bitboards.getColorOcc(sideColor.other());
+        long myOcc = bitboardsOld.getColorOcc(sideColor);
+        long enemyOcc = bitboardsOld.getColorOcc(sideColor.other());
 
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.North);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.East);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.South);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.West);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.North);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.East);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.South);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.West);
 
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.NorthEast);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.SouthEast);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.SouthWest);
-        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, Direction.NorthWest);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.NorthEast);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.SouthEast);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.SouthWest);
+        legalMoves |= legalLineGen(pos, sideColor, PieceType.Queen, myOcc, enemyOcc, aFile, hFile, DirectionOld.NorthWest);
 
         return legalMoves;
     }
 
-    private long legalLineGen(long pos, SideColor sideColor, PieceType pieceType, long myOcc, long enemyOcc, long aFile, long hFile, Direction direction) {
+    private long legalLineGen(long pos, SideColor sideColor, PieceType pieceType, long myOcc, long enemyOcc, long aFile, long hFile, DirectionOld direction) {
 
         long legalMoves = 0x0L;
 
@@ -186,7 +186,7 @@ public class LegalMoves {
         return legalMoves;
     }
 
-    private long step(long pos, long aFile, long hFile, Direction direction) {
+    private long step(long pos, long aFile, long hFile, DirectionOld direction) {
 
         long step = 0x0L;
 
@@ -206,23 +206,22 @@ public class LegalMoves {
         return step;
     }
 
-    // TODO: create a working kingLegalMoves Method
     private long kingLegalMoves(long pos, SideColor sideColor) {
 
         long legalMoves = 0x0L;
 
-        long myOcc = bitboards.getColorOcc(sideColor);
-        long enemyOcc = bitboards.getColorOcc(sideColor.other());
+        long myOcc = bitboardsOld.getColorOcc(sideColor);
+        long enemyOcc = bitboardsOld.getColorOcc(sideColor.other());
 
-        long aFile = bitboards.getFile(0);
-        long hFile = bitboards.getFile(7);
+        long aFile = bitboardsOld.getFile(0);
+        long hFile = bitboardsOld.getFile(7);
 
-        boolean kingMoved = bitboards.kingMoved(sideColor);
-        boolean aRookMoved = bitboards.rookMoved(sideColor, aFile);
-        boolean hRookMoved = bitboards.rookMoved(sideColor, hFile);
+        boolean kingMoved = bitboardsOld.kingMoved(sideColor);
+        boolean aRookMoved = bitboardsOld.rookMoved(sideColor, aFile);
+        boolean hRookMoved = bitboardsOld.rookMoved(sideColor, hFile);
         boolean inCheck = checkForCheck(sideColor, sideColor.other());
 
-        for (Direction direction : Direction.values()) {
+        for (DirectionOld direction : DirectionOld.values()) {
 
             boolean legality;
 
@@ -241,18 +240,18 @@ public class LegalMoves {
                 legalMoves |= (legality)? oneStep : 0x0L;
             }
 
-            if (direction == Direction.East && !kingMoved && !hRookMoved && legality && !inCheck) {
+            if (direction == DirectionOld.East && !kingMoved && !hRookMoved && legality && !inCheck) {
 
-                if ((bitboards.getPieces(sideColor, PieceType.Rook) & hFile) == 0x0L) continue;
+                if ((bitboardsOld.getPieces(sideColor, PieceType.Rook) & hFile) == 0x0L) continue;
                 long castlingRight = direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc);
 
                 legality = castlingRight != 0x0L && castlingLegality(sideColor, pos, castlingRight, hFile);
                 legalMoves |= legality? castlingRight : 0x0L;
             }
 
-            if (direction == Direction.West && !kingMoved && !aRookMoved && legality && !inCheck) {
+            if (direction == DirectionOld.West && !kingMoved && !aRookMoved && legality && !inCheck) {
 
-                if ((bitboards.getPieces(sideColor, PieceType.Rook) & aFile) == 0x0L) continue;
+                if ((bitboardsOld.getPieces(sideColor, PieceType.Rook) & aFile) == 0x0L) continue;
 
                 long castlingLeft = (direction.go(oneStep, aFile, hFile) & ~(myOcc | enemyOcc));
                 long rightOfRook = direction.go(castlingLeft, aFile, hFile) & ~(myOcc | enemyOcc);
@@ -266,15 +265,15 @@ public class LegalMoves {
          return legalMoves;
     }
 
-    // TODO: collapse all MoveLegality methods into one
+    //TODO: collapse all MoveLegality methods into one
     ///true -> legal move | false -> illegal move
     private boolean quietMoveLegality (SideColor sideColor, PieceType pieceType, long from, long to) {
 
         SideColor enemySideColor = sideColor.other();
 
-        bitboards.setPieces(sideColor, pieceType, from, to);
+        bitboardsOld.setPieces(sideColor, pieceType, from, to);
         boolean legality = !(checkForCheck(sideColor, enemySideColor));
-        bitboards.setPieces(sideColor, pieceType, to, from);
+        bitboardsOld.setPieces(sideColor, pieceType, to, from);
         return legality;
     }
 
@@ -283,9 +282,10 @@ public class LegalMoves {
         SideColor enemySideColor = sideColor.other();
         PieceType enemyPieceType = null;
 
+        //find the pieceType of the attacked Piece
         for (PieceType p : PieceType.values()) {
 
-            long curPiece = bitboards.getPieces(enemySideColor, p);
+            long curPiece = bitboardsOld.getPieces(enemySideColor, p);
             if ((to & curPiece) != 0) {
                 enemyPieceType = p;
                 break;
@@ -295,14 +295,14 @@ public class LegalMoves {
         if (enemyPieceType == null) throw new WrongMethodTypeException("No Piece is Taken, Wrong Method called!!!");
 
         //make Move
-        bitboards.setPieces(sideColor, pieceType, from, to);
-        bitboards.setPieces(enemySideColor, enemyPieceType, to, 0x0L);
+        bitboardsOld.setPieces(sideColor, pieceType, from, to);
+        bitboardsOld.setPieces(enemySideColor, enemyPieceType, to, 0x0L);
 
         boolean legality = !(checkForCheck(sideColor, enemySideColor));
 
         //Undo Move
-        bitboards.setPieces(sideColor, pieceType, to, from);
-        bitboards.setPieces(enemySideColor,enemyPieceType, to);
+        bitboardsOld.setPieces(sideColor, pieceType, to, from);
+        bitboardsOld.setPieces(enemySideColor,enemyPieceType, to);
 
         return legality;
     }
@@ -314,48 +314,48 @@ public class LegalMoves {
 
         SideColor enemySideColor = sideColor.other();
 
-        long aFile = bitboards.getFile(0);
-        long hFile = bitboards.getFile(7);
-        long homeRank = (sideColor == SideColor.White)? bitboards.getRank(0) : bitboards.getRank(7);
+        long aFile = bitboardsOld.getFile(0);
+        long hFile = bitboardsOld.getFile(7);
+        long homeRank = (sideColor == SideColor.White)? bitboardsOld.getRank(0) : bitboardsOld.getRank(7);
 
         if (rookFile != aFile && rookFile != hFile) throw new IllegalArgumentException("file should be a/h-File!");
 
-        if (bitboards.kingMoved(sideColor) || bitboards.rookMoved(sideColor, rookFile)) return false;
+        if (bitboardsOld.kingMoved(sideColor) || bitboardsOld.rookMoved(sideColor, rookFile)) return false;
 
         boolean kingSide = rookFile == hFile;
 
-        long rookFrom = bitboards.getPieces(sideColor, PieceType.Rook) & rookFile & homeRank;
+        long rookFrom = bitboardsOld.getPieces(sideColor, PieceType.Rook) & rookFile & homeRank;
         long rookTo = (kingSide)? (to << 1) : (to >>> 1);
 
-        bitboards.setPieces(sideColor, PieceType.King, from, to);
-        bitboards.setPieces(sideColor, PieceType.Rook, rookFrom, rookTo);
+        bitboardsOld.setPieces(sideColor, PieceType.King, from, to);
+        bitboardsOld.setPieces(sideColor, PieceType.Rook, rookFrom, rookTo);
 
         boolean legality = !checkForCheck(sideColor, enemySideColor);
 
-        bitboards.setPieces(sideColor, PieceType.King, to, from);
-        bitboards.setPieces(sideColor, PieceType.Rook, rookTo, rookFrom);
+        bitboardsOld.setPieces(sideColor, PieceType.King, to, from);
+        bitboardsOld.setPieces(sideColor, PieceType.Rook, rookTo, rookFrom);
 
         return legality;
     }
 
     private boolean enPassantCaptureLegality (SideColor sideColor, long from, long to) {
 
-        long enPassant = bitboards.getEnPassant();
+        long enPassant = bitboardsOld.getEnPassant();
 
         if ((enPassant & to) == 0) throw new IllegalStateException("targetSquare is not the current EP target square!!!");
 
         SideColor enemySideColor = sideColor.other();
         long pawnCaptured = (enemySideColor == SideColor.White)? to << 8: to >>> 8;
 
-        bitboards.setPieces(sideColor, PieceType.Pawn, from, to);
-        bitboards.setEnPassant(0x0L);
-        bitboards.setPieces(enemySideColor, PieceType.Pawn, pawnCaptured, 0x0L);
+        bitboardsOld.setPieces(sideColor, PieceType.Pawn, from, to);
+        bitboardsOld.setEnPassant(0x0L);
+        bitboardsOld.setPieces(enemySideColor, PieceType.Pawn, pawnCaptured, 0x0L);
 
         boolean legality = !(checkForCheck(sideColor, enemySideColor));
 
-        bitboards.setPieces(sideColor, PieceType.Pawn, to, from);
-        bitboards.setEnPassant(enPassant);
-        bitboards.setPieces(enemySideColor, PieceType.Pawn, pawnCaptured);
+        bitboardsOld.setPieces(sideColor, PieceType.Pawn, to, from);
+        bitboardsOld.setEnPassant(enPassant);
+        bitboardsOld.setPieces(enemySideColor, PieceType.Pawn, pawnCaptured);
 
         return legality;
     }
@@ -363,10 +363,26 @@ public class LegalMoves {
     ///true -> in check | false -> not in check
     private boolean checkForCheck (SideColor mySideColor, SideColor enemySideColor) {
 
-        long enemyAtkBoard = attackPatterns.getFullAtkBoard(enemySideColor);
-        long myKing = bitboards.getPieces(mySideColor, PieceType.King);
+        long enemyAtkBoard = attackPatternsOld.getFullAtkBoard(enemySideColor);
+        long myKing = bitboardsOld.getPieces(mySideColor, PieceType.King);
 
         return (enemyAtkBoard & myKing) != 0;
     }
 
+    /**
+     * Returns a boolean {@code true} if the game is over (checkMate/draw), {@code false} otherwise
+     *
+     * @param s the color whose turn it is
+     * @return {@code true} if the game is over (checkMate/draw), {@code false} otherwise
+     */
+    public boolean gameOver(SideColor s) {
+
+        for (long i = 0x01L; i <= 0x8000000000000000L; i <<= 1) {
+
+                long legalMoves = legalMoves(i, s);
+                if (legalMoves != 0x0L) return false;
+        }
+
+        return true;
+    }
 }

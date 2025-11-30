@@ -1,4 +1,4 @@
-public enum Direction {
+public enum DirectionOld {
     North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest;
 
     public int DirectionToIndex() {

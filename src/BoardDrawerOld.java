@@ -5,9 +5,9 @@ import codedraw.Palette;
 
 import java.awt.Color;
 
-public class BoardDrawer {
+public class BoardDrawerOld {
 
-    private Bitboards bitboard;
+    private BitboardsOld bitboard;
     private CodeDraw myObj;
     private final int canvasSize;
     private final int tileSize;
@@ -16,7 +16,7 @@ public class BoardDrawer {
     private final Color myBlack = Palette.fromRGB(178, 128, 94);
     private final Color myGreen = Palette.fromRGBA(3, 75, 18, 117);
 
-    public BoardDrawer(Bitboards bitboard, int canvasSize) {
+    public BoardDrawerOld(BitboardsOld bitboard, int canvasSize) {
 
         this.bitboard = bitboard;
         this.canvasSize = canvasSize;
@@ -96,5 +96,9 @@ public class BoardDrawer {
 
     public EventScanner getEventScanner() {
         return myObj.getEventScanner();
+    }
+
+    public void close() {
+        myObj.close();
     }
 }

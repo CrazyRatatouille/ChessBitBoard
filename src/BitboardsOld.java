@@ -1,6 +1,6 @@
 import java.util.Arrays;
 
-public class Bitboards {
+public class BitboardsOld {
 
     private long[] Pieces;
     private long enPassant = 0L;
@@ -15,7 +15,7 @@ public class Bitboards {
     private boolean bKingMoved;
 
 
-    public Bitboards() {
+    public BitboardsOld() {
 
         Pieces = new long[12];
 
@@ -40,7 +40,7 @@ public class Bitboards {
         bKingMoved = false;
     }
 
-    public Bitboards(Bitboards bitboard) {
+    public BitboardsOld(BitboardsOld bitboard) {
         this.Pieces = Arrays.copyOf(bitboard.Pieces,12);
 
         this.a1RookMoved = bitboard.a1RookMoved;
@@ -175,6 +175,14 @@ public class Bitboards {
         else h8RookMoved = !h8RookMoved;
     }
 
+    /**
+     * For any given square {@code pos}, this method checks the PieceType, saves it in {@code pieceType[0]} and returns
+     * the color of the piece on the given square. Returns null if the square is not occupied by any piece.
+     *
+     * @param pos the square to be checked
+     * @param pieceType an array which value gets set to the PieceType this square is occupied by
+     * @return the color of the piece positioned on {@code pos}
+     */
     public SideColor findPosInfo(long pos, PieceType[] pieceType) {
 
         for (int i = 0; i < Pieces.length; i++) {
