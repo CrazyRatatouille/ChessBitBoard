@@ -7,6 +7,7 @@ public class BitBoards {
                                 0x0008L, 0x0800000000000000L,   //wQueen    bQueen
                                 0x0010L, 0x1000000000000000L};  //wKing     bKing
 
+    private long enPassant = 0x0L;
     private boolean[] rooksMovedFlags = {false, false, false, false}; // wARook, wHRook, bARook, bHRook
     private boolean[] kingsMovedFlags = {false, false}; //wKing, bKing
 //
@@ -29,24 +30,55 @@ public class BitBoards {
      * The purpose of this constructor is to allow engines to create branches, to analyze the best moves without
      * altering the main bitboards.
      *
-     * @param other the chessBoard to be copied
+     * @param other the {@code BitBoards} to be copied
      */
     public BitBoards(BitBoards other) {
 
-        for (int i = 0; i < other.bitboards.length; i++) {
-            this.bitboards[i] = other.bitboards[i];
-        }
+        System.arraycopy(other.bitboards, 0, this.bitboards, 0, this.bitboards.length);
+        System.arraycopy(other.rooksMovedFlags, 0, this.rooksMovedFlags, 0, this.rooksMovedFlags.length);
+        System.arraycopy(other.kingsMovedFlags, 0, this.kingsMovedFlags, 0, this.kingsMovedFlags.length);
 
-        for (int i = 0; i < other.rooksMovedFlags.length; i++) {
-            this.rooksMovedFlags[i] = other.rooksMovedFlags[i];
-        }
-
-        for (int i = 0; i < other.kingsMovedFlags.length; i++) {
-            this.kingsMovedFlags = other.kingsMovedFlags;
-        }
+        this.enPassant = other.enPassant;
     }
+
 
     public void makeMove(Move move) {
         //TODO: get this working
+    }
+
+    /**
+     * This method returns an occupancyMap of the whole chessBoard with all its Pieces
+     *
+     * @return the occupancyMap of the whole chessBoard with all its Pieces
+     */
+    public long getOccupancy() {
+
+        long occ = 0L;
+
+        for (long num : bitboards) {
+            occ |= num;
+        }
+
+        return occ;
+    }
+
+    /**
+     * This method returns an occupancyMap of the whole chessBoard with all its Pieces
+     *
+     * @param color the color of Pieces, whose occMap is to be returned
+     * @return the occupancyMap of the whole chessBoard with all Pieces of the color {@code color}
+     */
+    public long getColorOccupancy(SideColor color) {
+
+        long occ = 0L;
+
+        for (int i = 0; i < 6; i++) {
+
+            int index = ((color == SideColor.White)? 0 : 1) + (2 * i);
+
+            occ |= bitboards[index];
+        }
+
+        return occ;
     }
 }
