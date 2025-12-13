@@ -7,15 +7,19 @@ public class BitBoards {
                                 0x0008L, 0x0800000000000000L,   //wQueen    bQueen
                                 0x0010L, 0x1000000000000000L};  //wKing     bKing
 
-    //files a - h in that order
-    private long[] files = {0x0808080808080808L, 0x0404040404040404L,
-                            0x0202020202020202L, 0x0101010101010101L,
-                            0x8080808080808080L, 0x4040404040404040L,
-                            0x2020202020202020L, 0x1010101010101010L};
+    /**
+     * files[0] (aFile) - files[7] (hFile)
+     */
+    private static final long[] files = {
+            0x0101010101010101L, 0x0202020202020202L, 0x0404040404040404L, 0x0808080808080808L,
+            0x1010101010101010L, 0x2020202020202020L, 0x4040404040404040L, 0x8080808080808080L};
 
-    //ranks 1 - 8 in that order
-    private long[] ranks = {0x88L, 0x8800L, 0x880000, 0x88000000L, 0x8800000000L, 0x880000000000L,
-                            0x88000000000000L, 0x8800000000000000L};
+    /**
+     * ranks[0] (1st rank) - ranks[7] (8th rank)
+     */
+    private static final long[] ranks = {
+            0xFFL, 0xFF00L, 0xFF0000, 0xFF000000L,
+            0xFF00000000L, 0xFF0000000000L, 0xFF000000000000L, 0xFF00000000000000L};
 
     private long enPassant = 0x0L;
     private boolean[] rooksMovedFlags = {false, false, false, false}; // wARook, wHRook, bARook, bHRook
@@ -24,14 +28,6 @@ public class BitBoards {
     private static final long Castling_Mask = Square.A1.pos() | Square.A8.pos()
                                             | Square.H1.pos() | Square.H8.pos()
                                             | Square.E1.pos() | Square.E8.pos();
-//
-//    boolean wARookMoved = false;
-//    boolean wHRookMoved = false;
-//    boolean bARookMoved = false;
-//    boolean bHRookMoved = false;
-//
-//    boolean wKingMoved = false;
-//    boolean bKingMoved = false;
 
     /**
      * This constructor sets up a new chess board with all Pieces on their home square.
@@ -55,7 +51,6 @@ public class BitBoards {
         this.enPassant = other.enPassant;
     }
 
-
     public void makeMove(Move move) {
 
         int colorIndexAdjustment = move.color().ordinal();
@@ -68,41 +63,68 @@ public class BitBoards {
         PieceType promotionTo = move.promotionTo();
         PieceType capturedPiece = move.capturedPieceType();
 
+        enPassant = 0x0L;
+
         //this is always executed, no matter what moveType
         int movingPieceIndex = colorIndexAdjustment + pieceIndexAdjustment;
         bitboards[movingPieceIndex] = (bitboards[movingPieceIndex] & ~fromBit) | toBit;
 
         switch (moveType) {
             case CAPTURE -> capture(toBit, move.color().other().ordinal() + capturedPiece.ordinal() * 2);
-            case PROMOTION -> promotion(toBit, movingPieceIndex, colorIndexAdjustment + promotionTo.ordinal() * 2);
-            case ENPASSANT -> enPassant = 0L;
+            case PAWN_DOUBLE_MOVE -> pawnDoubleMove(fromBit, colorIndexAdjustment);
             case KING_SIDE_CASTLE -> kingSideCastle(colorIndexAdjustment);
-            case QUEEN_SIDE_CASTLE -> {}
-            case PAWN_DOUBLE_MOVE -> {}
-            default -> {}
+            case QUEEN_SIDE_CASTLE -> queenSideCastle(colorIndexAdjustment);
+            case PROMOTION -> promotion(toBit, movingPieceIndex, colorIndexAdjustment + promotionTo.ordinal() * 2);
+            case ENPASSANT -> enPassant(toBit, move.color());
         }
+
+        //TODO: castling rights update
+        updateCastlingRights(fromBit, toBit);
     }
 
     private void capture(long toBit, int capturedPieceIndex) {
         bitboards[capturedPieceIndex] &= ~toBit;
     }
 
-    private void promotion(long toBit, int movingPieceIndex, int promotionIndex) {
+    private void promotion(long toBit, int movingPieceIndex, int promotionPieceIndex) {
         bitboards[movingPieceIndex] &= ~toBit;
-        bitboards[promotionIndex] |= toBit;
+        bitboards[promotionPieceIndex] |= toBit;
     }
 
     private void kingSideCastle(int colorSideAdjustment) {
 
-        bitboards[10 + colorSideAdjustment] <<= 2;
-        bitboards[6 + colorSideAdjustment] = (bitboards[6 + colorSideAdjustment] & ~files[8]) | (ranks[8 * colorSideAdjustment] & files[6]);
+        int rookIndex = 6 + colorSideAdjustment;
+        long rookPos = (colorSideAdjustment == 0)? Square.H1.pos() : Square.H8.pos();
+        bitboards[rookIndex] = ((bitboards[rookIndex] & ~rookPos) | (rookPos >>> 2));
     }
 
     private void queenSideCastle(int colorSideAdjustment) {
-        bitboards[10 + colorSideAdjustment] >>>= 2;
-        bitboards[6 + colorSideAdjustment] = (bitboards[6 + colorSideAdjustment] & ~files[1]) | (ranks[8 * colorSideAdjustment] & files[4]);
+
+        int rookIndex = 6 + colorSideAdjustment;
+        long rookPos = (colorSideAdjustment == 0)? Square.A1.pos() : Square.A8.pos();
+        bitboards[rookIndex] = ((bitboards[rookIndex] & ~rookPos) | (rookPos << 3));
     }
 
+    private void pawnDoubleMove(long fromBit, int colorSideAdjustment) {
+
+        switch (colorSideAdjustment) {
+            case 0 -> enPassant = fromBit << 8;
+            case 1 -> enPassant = fromBit >>> 8;
+        }
+    }
+
+    private void enPassant(long toBit, SideColor color) {
+
+        switch (color) {
+            case White -> bitboards[1] &= ~(toBit >>> 8);
+            case Black -> bitboards[0] &= ~(toBit << 8);
+        }
+    }
+
+    private void updateCastlingRights(long fromBit, long toBit) {
+
+    }
+    
     /**
      * This method returns an occupancyMap of the whole chessBoard with all its Pieces
      *
