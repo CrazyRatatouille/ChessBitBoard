@@ -46,9 +46,6 @@ public class BitBoards {
 
     private long[] occs = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF0000000000FFL};
 
-    private static final long[] kSideRookPos = {Square.H1.pos(), Square.H8.pos()};
-    private static final long[] qSideRookPos ={Square.A1.pos(), Square.H8.pos()};
-
     /**
      * This constructor sets up a new chess board with all Pieces on their home square.
      * A1 is the LSB and H8 being the MSB
@@ -89,50 +86,58 @@ public class BitBoards {
 
         enPassant = 0x0L;
         occs[colorIndexAdjustment] ^= (fromBit | toBit);
-        occs[2] ^= (fromBit | toBit);
 
         //this is always executed, no matter what moveType
         int movingPieceIndex = colorIndexAdjustment + pieceIndexAdjustment;
-        bitboards[movingPieceIndex] = (bitboards[movingPieceIndex] & ~fromBit) | toBit;
+        bitboards[movingPieceIndex] ^= (fromBit | toBit);
 
         switch (moveType) {
-            case CAPTURE -> capture(toBit, move.color().other().ordinal() + capturedPiece.ordinal() * 2);
+            case CAPTURE -> capture(toBit, move.color().other().ordinal(), capturedPiece.ordinal());
             case PAWN_DOUBLE_MOVE -> pawnDoubleMove(fromBit, colorIndexAdjustment);
-            case KING_SIDE_CASTLE -> kingSideCastle(colorIndexAdjustment);
-            case QUEEN_SIDE_CASTLE -> queenSideCastle(colorIndexAdjustment);
+            case KING_SIDE_CASTLE -> kingSideCastle(toBit, colorIndexAdjustment);
+            case QUEEN_SIDE_CASTLE -> queenSideCastle(toBit, colorIndexAdjustment);
             case PROMOTION -> promotion(toBit, movingPieceIndex, colorIndexAdjustment + promotionTo.ordinal() * 2);
-            case ENPASSANT -> enPassant(toBit, move.color());
+            case ENPASSANT -> enPassant(toBit, colorIndexAdjustment);
         }
 
         updateCastlingRights(move.From(), move.To());
     }
 
-    private void capture(long toBit, int capturedPieceIndex) {
-        bitboards[capturedPieceIndex] &= ~toBit;
+    private void capture(long toBit, int capturedColorAdjustment, int capturedPieceAdjustment) {
+
+        int capturedPieceIndex = capturedColorAdjustment + (capturedPieceAdjustment * 2);
+        bitboards[capturedPieceIndex] ^= toBit;
+
+        occs[capturedColorAdjustment] ^= toBit;
     }
 
     private void promotion(long toBit, int movingPieceIndex, int promotionPieceIndex) {
-        bitboards[movingPieceIndex] &= ~toBit;
+        bitboards[movingPieceIndex] ^= toBit;
         bitboards[promotionPieceIndex] |= toBit;
     }
 
-    private void kingSideCastle(int colorSideAdjustment) {
+    private void kingSideCastle( long toBit, int colorSideAdjustment) {
 
         int rookIndex = 6 + colorSideAdjustment;
-        long rookPos = kSideRookPos[colorSideAdjustment];
+        long rookPos = Square.H1.pos() << (colorSideAdjustment * 56);
         long moveMask = (rookPos | rookPos >>> 2);
-//        long newRookPos = (bitboards[rookIndex] & ~rookPos) | (rookPos >>> 2);
+
         bitboards[rookIndex] ^= moveMask;
 
         occs[colorSideAdjustment] ^= moveMask;
-        occs[2] ^= moveMask;
+        occs[2] ^= (moveMask | toBit | Square.E1.pos() << (colorSideAdjustment * 56));
     }
 
-    private void queenSideCastle(int colorSideAdjustment) {
+    private void queenSideCastle(long toBit, int colorSideAdjustment) {
 
         int rookIndex = 6 + colorSideAdjustment;
-        long rookPos = qSideRookPos[colorSideAdjustment];
-        bitboards[rookIndex] = ((bitboards[rookIndex] & ~rookPos) | (rookPos << 3));
+        long rookPos = Square.A1.pos() << (colorSideAdjustment * 56);
+        long moveMask = (rookPos | rookPos << 3);
+
+        bitboards[rookIndex] ^= moveMask;
+
+        occs[colorSideAdjustment] ^= moveMask;
+        occs[2] ^= (moveMask | toBit | Square.E1.pos() << (colorSideAdjustment * 56));
     }
 
     private void pawnDoubleMove(long fromBit, int colorSideAdjustment) {
@@ -143,12 +148,24 @@ public class BitBoards {
         }
     }
 
-    private void enPassant(long toBit, SideColor color) {
+    private void enPassant(long toBit, int colorSideAdjustment) {
 
-        switch (color) {
-            case White -> bitboards[1] &= ~(toBit >>> 8);
-            case Black -> bitboards[0] &= ~(toBit << 8);
+        long takenBit = 0x0L;
+
+        switch (colorSideAdjustment) {
+            case 0 -> {
+                takenBit = toBit >>> 8;
+                bitboards[1] ^= takenBit;
+                occs[1] ^= takenBit;
+            }
+            case 1 -> {
+                takenBit = toBit << 8;
+                bitboards[0] ^= takenBit;
+                occs[0] ^= takenBit;
+            }
         }
+          
+        occs[colorSideAdjustment] ^= takenBit;
     }
 
     private void updateCastlingRights(Square from, Square to) {
