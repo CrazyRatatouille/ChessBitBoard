@@ -26,7 +26,12 @@ public class BitBoards {
 
     private long enPassant = 0x0L;
 
-    // 1 (bKingSide) - 1 (bQueenSide) - 1 (wKingSide) - 1 (wQueenSide)
+    /**
+     * bit 1 (LSB): wQueenSide <br>
+     * bit 2 : wKingSide <br>
+     * bit 3 : bQueenSide <br>
+     * bit 4 (MSB) : bKingSide
+     */
     private byte castlingRights = 0xF;
     private static final byte[] castlingMasks = {
             0xE, 0xF, 0xF, 0xF, 0xC, 0xF, 0xF, 0xD,
@@ -66,6 +71,8 @@ public class BitBoards {
     public void makeMove(Move move) {
 
         //TODO: occs unfinished
+
+        //TODO: refactor Move move into int move to avoid object creation (deletion by GC is slow, cache misses)
 
         int colorIndexAdjustment = move.color().ordinal();
         int pieceIndexAdjustment = move.pieceType().ordinal() * 2;
