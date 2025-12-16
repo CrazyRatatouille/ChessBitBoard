@@ -46,6 +46,9 @@ public class BitBoards {
 
     private long[] occs = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF0000000000FFL};
 
+    private static final long[] kSideRookPos = {Square.H1.pos(), Square.H8.pos()};
+    private static final long[] qSideRookPos ={Square.A1.pos(), Square.H8.pos()};
+
     /**
      * This constructor sets up a new chess board with all Pieces on their home square.
      * A1 is the LSB and H8 being the MSB
@@ -116,14 +119,19 @@ public class BitBoards {
     private void kingSideCastle(int colorSideAdjustment) {
 
         int rookIndex = 6 + colorSideAdjustment;
-        long rookPos = (colorSideAdjustment == 0)? Square.H1.pos() : Square.H8.pos();
-        bitboards[rookIndex] = ((bitboards[rookIndex] & ~rookPos) | (rookPos >>> 2));
+        long rookPos = kSideRookPos[colorSideAdjustment];
+        long moveMask = (rookPos | rookPos >>> 2);
+//        long newRookPos = (bitboards[rookIndex] & ~rookPos) | (rookPos >>> 2);
+        bitboards[rookIndex] ^= moveMask;
+
+        occs[colorSideAdjustment] ^= moveMask;
+        occs[2] ^= moveMask;
     }
 
     private void queenSideCastle(int colorSideAdjustment) {
 
         int rookIndex = 6 + colorSideAdjustment;
-        long rookPos = (colorSideAdjustment == 0)? Square.A1.pos() : Square.A8.pos();
+        long rookPos = qSideRookPos[colorSideAdjustment];
         bitboards[rookIndex] = ((bitboards[rookIndex] & ~rookPos) | (rookPos << 3));
     }
 
