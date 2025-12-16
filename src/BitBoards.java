@@ -5,29 +5,41 @@ public class BitBoards {
                                 0x0024L, 0x2400000000000000L,   //wBishop   bBishop
                                 0x0081L, 0x8100000000000000L,   //wRook     bRook
                                 0x0008L, 0x0800000000000000L,   //wQueen    bQueen
-                                0x0010L, 0x1000000000000000L};  //wKing     bKing
+                                0x0010L, 0x1000000000000000L    //wKing     bKing
+    };
 
     /**
      * files[0] (aFile) - files[7] (hFile)
      */
-    private static final long[] files = {
+    private static final long[] fileMasks = {
             0x0101010101010101L, 0x0202020202020202L, 0x0404040404040404L, 0x0808080808080808L,
-            0x1010101010101010L, 0x2020202020202020L, 0x4040404040404040L, 0x8080808080808080L};
+            0x1010101010101010L, 0x2020202020202020L, 0x4040404040404040L, 0x8080808080808080L
+    };
 
     /**
      * ranks[0] (1st rank) - ranks[7] (8th rank)
      */
-    private static final long[] ranks = {
+    private static final long[] rankMasks = {
             0xFFL, 0xFF00L, 0xFF0000, 0xFF000000L,
-            0xFF00000000L, 0xFF0000000000L, 0xFF000000000000L, 0xFF00000000000000L};
+            0xFF00000000L, 0xFF0000000000L, 0xFF000000000000L, 0xFF00000000000000L
+    };
 
     private long enPassant = 0x0L;
-    private boolean[] rooksMovedFlags = {false, false, false, false}; // wARook, wHRook, bARook, bHRook
-    private boolean[] kingsMovedFlags = {false, false}; //wKing, bKing
 
-    private static final long Castling_Mask = Square.A1.pos() | Square.A8.pos()
-                                            | Square.H1.pos() | Square.H8.pos()
-                                            | Square.E1.pos() | Square.E8.pos();
+    // 1 (bKingSide) - 1 (bQueenSide) - 1 (wKingSide) - 1 (wQueenSide)
+    private byte castlingRights = 0xF;
+    private static final byte[] castlingMasks = {
+            0xE, 0xF, 0xF, 0xF, 0xC, 0xF, 0xF, 0xD,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
+            0xB, 0xF, 0xF, 0xF, 0x3, 0xF, 0xF, 0x7,
+    };
+
+    private long[] occs = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF0000000000FFL};
 
     /**
      * This constructor sets up a new chess board with all Pieces on their home square.
@@ -45,13 +57,15 @@ public class BitBoards {
     public BitBoards(BitBoards other) {
 
         System.arraycopy(other.bitboards, 0, this.bitboards, 0, this.bitboards.length);
-        System.arraycopy(other.rooksMovedFlags, 0, this.rooksMovedFlags, 0, this.rooksMovedFlags.length);
-        System.arraycopy(other.kingsMovedFlags, 0, this.kingsMovedFlags, 0, this.kingsMovedFlags.length);
 
         this.enPassant = other.enPassant;
+        this.castlingRights = other.castlingRights;
+        this.occs = other.occs;
     }
 
     public void makeMove(Move move) {
+
+        //TODO: occs unfinished
 
         int colorIndexAdjustment = move.color().ordinal();
         int pieceIndexAdjustment = move.pieceType().ordinal() * 2;
@@ -64,6 +78,8 @@ public class BitBoards {
         PieceType capturedPiece = move.capturedPieceType();
 
         enPassant = 0x0L;
+        occs[colorIndexAdjustment] ^= (fromBit | toBit);
+        occs[2] ^= (fromBit | toBit);
 
         //this is always executed, no matter what moveType
         int movingPieceIndex = colorIndexAdjustment + pieceIndexAdjustment;
@@ -78,8 +94,7 @@ public class BitBoards {
             case ENPASSANT -> enPassant(toBit, move.color());
         }
 
-        //TODO: castling rights update
-        updateCastlingRights(fromBit, toBit);
+        updateCastlingRights(move.From(), move.To());
     }
 
     private void capture(long toBit, int capturedPieceIndex) {
@@ -121,8 +136,8 @@ public class BitBoards {
         }
     }
 
-    private void updateCastlingRights(long fromBit, long toBit) {
-
+    private void updateCastlingRights(Square from, Square to) {
+        castlingRights &= (castlingMasks[from.ordinal()] & castlingMasks[to.ordinal()]);
     }
     
     /**
@@ -131,14 +146,7 @@ public class BitBoards {
      * @return the occupancyMap of the whole chessBoard with all its Pieces
      */
     public long getOccupancy() {
-
-        long occ = 0L;
-
-        for (long num : bitboards) {
-            occ |= num;
-        }
-
-        return occ;
+        return occs[2];
     }
 
     /**
@@ -148,17 +156,7 @@ public class BitBoards {
      * @return the occupancyMap of the whole chessBoard with all Pieces of the color {@code color}
      */
     public long getColorOccupancy(SideColor color) {
-
-        long occ = 0L;
-
-        for (int i = 0; i < 6; i++) {
-
-            int index = color.ordinal() + (2 * i);
-
-            occ |= bitboards[index];
-        }
-
-        return occ;
+        return occs[color.ordinal()];
     }
 
     /**
