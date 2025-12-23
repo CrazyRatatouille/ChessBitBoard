@@ -103,42 +103,50 @@ public class BoardState {
     }
 
     /**
-     * Primary entry point for updating board state. Routes the move to
-     * the appropriate internal bitwise handler.
-     *
-     * @param move The move to be executed.
+     * Executes a move on the board using a 16-bit encoded integer.
+     * <p>
+     * The encoding follows the standard "From-To" layout. Bits [0,5] to, [6,11] from, 14 Capture, 15 Promotion.
+     * It packs the Source Square, Destination Square, and Move Type (promotion, capture, etc.)
+     * into a single short/int for cache efficiency.
+     * </p>
+     * @param move The 16-bit encoded move.
+     * @see <a href="https://www.chessprogramming.org/Encoding_Moves">Chess Programming Wiki: Encoding Moves</a>
      */
-    public void makeMove(Move move) {
+    public void makeMove(short move) {
 
         //TODO: remove codeDuplication as much as possible and lift general purpose computation
-        //TODO: refactor Move move into int move to avoid object creation (deletion by GC is slow, cache misses)
+        //TODO: update mailbox
 
-        long fromBit = move.From().pos();
-        long toBit = move.To().pos();
-        int color = move.color().ordinal();
-        Move.MoveType moveType = move.moveType();
+        int fromSq = (move >>> 6) & 0x3F;
+        int toSq = move & 0x3F;
+
+        long fromBit = 1L << fromSq;
+        long toBit = 1L << toSq;
+        int color = mailbox[fromSq] % 2;
+
+        int moveType = (move & 0xF000) >>> 12;
+        int promoTo = 2 + ((moveType & 0x3) << 1);
+        int captured = mailbox[toSq];
 
         enPassant = 0x0L;
 
-        int pIdx = color + (move.pieceType().ordinal() << 1); // mailbox[Long.numberOfTrailingZeros(fromBit)];
+        int pIdx = mailbox[fromSq];
         long moveMask = (fromBit | toBit);
 
-        PieceType captured = move.capturedPieceType(); // mailbox[Long.numberOfTrailingZeros(toBit)];
-        PieceType promoTo = move.promotionTo();
-
         switch (moveType) {
-            case QUIET -> quietMove(fromBit, toBit, color, pIdx);
-            case CAPTURE -> capture(fromBit, toBit, color, captured.ordinal(), pIdx);
-            case PAWN_DOUBLE_MOVE -> pawnDoubleMove(fromBit, toBit, color, pIdx);
-            case KING_SIDE_CASTLE -> kingSideCastle(fromBit, toBit, color, pIdx);
-            case QUEEN_SIDE_CASTLE -> queenSideCastle(fromBit, toBit, color, pIdx);
-            case PROMOTION -> promotion(fromBit, toBit, color, promoTo.ordinal(), pIdx);
-            case ENPASSANT -> enPassant(fromBit, toBit, color, pIdx);
-            case PROMOTION_AND_CAPTURE ->
-                    promotionAndCapture(fromBit, toBit, color, captured.ordinal(), promoTo.ordinal(), pIdx);
+            case 0 -> quietMove(fromBit, toBit, color, pIdx);
+            case 1 -> pawnDoubleMove(fromBit, toBit, color, pIdx);
+            case 2 -> kingSideCastle(fromBit, toBit, color, pIdx);
+            case 3 -> queenSideCastle(fromBit, toBit, color, pIdx);
+            case 4 -> capture(fromBit, toBit, color, captured, pIdx);
+            case 5 -> enPassant(fromBit, toBit, color, pIdx);
+
+            case 8, 9, 10, 11-> promotion(fromBit, toBit, color, promoTo, pIdx);
+
+            case 12, 13, 14, 15 -> promotionAndCapture(fromBit, toBit, color, captured, promoTo, pIdx);
         }
 
-        updateCastlingRights(move.From(), move.To());
+        updateCastlingRights(fromSq, toSq);
     }
 
     /**
@@ -169,14 +177,13 @@ public class BoardState {
      */
     private void capture(long fromBit, long toBit, int color, int captured, int pIdx) {
 
-        int capColor = 0x1 ^ color;
         long moveMask = (fromBit | toBit);
 
         bitboards[pIdx] ^= (fromBit | toBit);
-        bitboards[capColor + (captured << 1)] ^= toBit;
+        bitboards[captured] ^= toBit;
 
         occs[color] ^= moveMask;
-        occs[capColor] ^= toBit;
+        occs[0x1 ^ color] ^= toBit;
         occs[2] ^= fromBit;
     }
 
@@ -194,7 +201,7 @@ public class BoardState {
         long moveMask = (fromBit | toBit);
 
         bitboards[pIdx] ^= fromBit;
-        bitboards[color + (promoTo << 1)] ^= toBit;
+        bitboards[color + promoTo] ^= toBit;
 
         occs[color] ^= moveMask;
         occs[2] ^= moveMask;
@@ -212,14 +219,12 @@ public class BoardState {
      */
     private void promotionAndCapture(long fromBit, long toBit, int color, int captured, int promoTo, int pIdx) {
 
-        int capColor = 0x1 ^ color;
-
         bitboards[pIdx] ^= fromBit;
-        bitboards[color + (promoTo << 1)] ^= toBit;
-        bitboards[capColor + (captured << 1)] ^= toBit;
+        bitboards[color + promoTo] ^= toBit;
+        bitboards[captured] ^= toBit;
 
         occs[color] ^= (fromBit | toBit);
-        occs[capColor] ^= toBit;
+        occs[0x1 ^ color] ^= toBit;
         occs[2] ^= fromBit;
     }
 
@@ -269,7 +274,6 @@ public class BoardState {
 
         occs[color] ^= moveMaskCombined;
         occs[2] ^= moveMaskCombined;
-        ;
     }
 
     /**
@@ -323,8 +327,8 @@ public class BoardState {
      * @param from The source square of the move.
      * @param to   The destination square of the move.
      */
-    private void updateCastlingRights(Square from, Square to) {
-        castlingRights &= (castlingMasks[from.ordinal()] & castlingMasks[to.ordinal()]);
+    private void updateCastlingRights(int from, int to) {
+        castlingRights &= (castlingMasks[from] & castlingMasks[to]);
     }
 
     /**
