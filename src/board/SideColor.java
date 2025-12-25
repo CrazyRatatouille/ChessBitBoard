@@ -1,3 +1,5 @@
+package board;
+
 public enum SideColor {
     White, Black;
 

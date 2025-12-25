@@ -1,4 +1,7 @@
+package board;
+
 import java.util.Random;
+import static constants.BoardConstants.*;
 
 /**
  * Generates and stores the Zobrist hash values used for board state hashing.
@@ -7,18 +10,20 @@ import java.util.Random;
  * a chess board position with a single {@code long} value. It is essential for implementing a
  * Transposition Table to detect repeated positions (3-fold repetition).</p>
  *
- * <p>Each unique combination of (PieceType, SideColor, Square) is assigned a single, cryptographically random {@code long}.
+ * <p>Each unique combination of (legacyToDelete.PieceType, SideColor, Square) is assigned a single, cryptographically random {@code long}.
  * The hash for any given board is computed by XORing the random values for all pieces on the board.</p>
  */
-public class ZobristHashValues {
+public class Zobrist {
 
-    private static final long[] zobristHashValues = new long[12 * 64];
+    //TODO: ADJUST TO NEW ARCHITECTURE
+
+    private static final long[] zobristHashValues = new long[13 * BOARD_SIZE];
 
     /**
      * Initializes a unique, cryptographically random long for every possible
-     * {@code PieceType}-{@code SideColor}-{@code Square} combination.
+     * {@code legacyToDelete.PieceType}-{@code SideColor}-{@code Square} combination.
      */
-    public ZobristHashValues() {
+    public Zobrist() {
 
         long seed = 0x5F8C9A72D3B1E4C7L;
         Random random = new Random(seed);
@@ -31,19 +36,15 @@ public class ZobristHashValues {
     /**
      * Returns the unique Zobrist hash value for a specific piece occupying a specific square.
      *
-     * @param sideColor the color of the piece.
-     * @param pieceType the type of the piece.
+     * @param PieceOrEP
      * @param square the position of the piece.
      * @return The 64-bit random long corresponding to this unique Piece-Square configuration.
      */
-    public static long getHashCode(SideColor sideColor, PieceType pieceType, Square square) {
+    public static long getHashCode(int PieceOrEP, int square) {
 
-        long pos = square.pos();
+        long pos = SQUARE_BB[square];
 
-        int colorAdj = (sideColor == SideColor.White)? 0 : 6;
-        int pieceAdj = pieceType.ordinal();
-
-        int index = (pieceAdj + colorAdj) * 64;
+        int index = (PieceOrEP) * BOARD_SIZE;
         index += Long.numberOfTrailingZeros(pos);
 
         return zobristHashValues[index];

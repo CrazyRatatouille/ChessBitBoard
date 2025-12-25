@@ -1,3 +1,5 @@
+package board;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,19 +13,19 @@ public class MoveGen {
         this.boardState = boardState;
     }
 
-    public List<Move> moves(int color) {
+    public List<Short> moves(int color) {
 
-        List<Move> output = new ArrayList<>();
+        List<Short> output = new ArrayList<>();
 
 
         return output;
     }
 
-    private void legalCheck(Move move) {
+    private void legalCheck(short move) {
 
     }
 
-    private void addWPMoves(List<Move> all) {
+    private void addWPMoves(List<Short> all) {
 
         long wPawns = boardState.getPieces(0);
         long bPawns = boardState.getPieces(1);
@@ -32,13 +34,10 @@ public class MoveGen {
 
             long singularPawn = 1L << Long.numberOfTrailingZeros(wPawns);
 
-            Move move = new Move(SideColor.White, PieceType.Pawn, Square.getSquare(singularPawn),
-                    Square.getSquare(singularPawn << 8), null, null, Move.MoveType.QUIET);
-
             wPawns &= (wPawns - 1);
         }
     }
 
-    private void addBPawnMoves(List<Move> all, long bPawns) {
+    private void addBPawnMoves(List<Short> all, long bPawns) {
     }
 }

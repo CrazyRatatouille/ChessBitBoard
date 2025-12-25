@@ -1,3 +1,7 @@
+package board;
+
+import static constants.BoardConstants.*;
+
 /**
  * Represents the state of a chess board using bitboard representation.
  * <p>
@@ -34,6 +38,12 @@ public class BoardState {
     };
 
     /**
+     * Occupancy bitboards.
+     * Index 0: White pieces, Index 1: Black pieces, Index 2: Combined (all) pieces.
+     */
+    private long[] occupancy = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF00000000FFFFL};
+
+    /**
      * Bitmask representing the single square available for an en passant capture.
      */
     private long enPassantTarget = 0x0L;
@@ -45,27 +55,6 @@ public class BoardState {
      * bit 4 (MSB) : bKingSide
      */
     private byte castlingRights = 0xF;
-
-    /**
-     * A lookup table used to update castling rights efficiently.
-     * When a piece moves from or to a square, the rights are bitwise AND-ed with these values.
-     */
-    private static final byte[] CASTLING_MASK_BY_SQUARE = {
-            0xE, 0xF, 0xF, 0xF, 0xC, 0xF, 0xF, 0xD,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF, 0xF,
-            0xB, 0xF, 0xF, 0xF, 0x3, 0xF, 0xF, 0x7,
-    };
-
-    /**
-     * Occupancy bitboards.
-     * Index 0: White pieces, Index 1: Black pieces, Index 2: Combined (all) pieces.
-     */
-    private long[] occupancy = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF00000000FFFFL};
 
     /**
      * Default constructor. Initializes the board to the standard starting position.
@@ -105,6 +94,8 @@ public class BoardState {
      */
     public void makeMove(short move) {
 
+        //TODO: add utility Class Move and refactor
+
         int from = (move >>> 6) & 0x3F;
         int to = move & 0x3F;
         int moveType = (move & 0xF000) >>> 12;
@@ -128,7 +119,7 @@ public class BoardState {
             case 2 -> kingSideCastle(to, moveMask, movingPiece, side);
             case 3 -> queenSideCastle(to, moveMask, movingPiece, side);
             case 4 -> capture(to, fromMask, toMask, moveMask, movingPiece, capturedPiece, side);
-            case 5 -> enPassant(to, fromMask, toMask, movingPiece, side);
+            case 5 -> enPassantCapture(to, toMask, moveMask, movingPiece, side);
 
             case 8, 9, 10, 11 -> promotion(to, fromMask, toMask, moveMask, movingPiece, promotionBase, side);
 
@@ -151,7 +142,7 @@ public class BoardState {
         pieceAt[to] = (byte)movingPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[2] ^= moveMask;
+        occupancy[BOTH] ^= moveMask;
     }
 
     private void capture(int to, long fromMask, long toMask, long moveMask, int movingPiece, int capturedPiece, int side) {
@@ -163,42 +154,42 @@ public class BoardState {
 
         occupancy[side] ^= moveMask;
         occupancy[0x1 ^ side] ^= toMask;
-        occupancy[2] ^= fromMask;
+        occupancy[BOTH] ^= fromMask;
     }
 
-    private void promotion(int to, long fromMask, long toMask, long moveMask, int movingPiece, int promotedPiece, int side) {
+    private void promotion(int to, long fromMask, long toMask, long moveMask, int movingPiece, int promotionBase, int side) {
 
-        byte promoIdx = (byte)(side + promotedPiece);
+        byte promotionPiece = (byte)(side + promotionBase);
 
         pieceBB[movingPiece] ^= fromMask;
-        pieceBB[promoIdx] ^= toMask;
+        pieceBB[promotionPiece] ^= toMask;
 
-        pieceAt[to] = promoIdx;
+        pieceAt[to] = promotionPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[2] ^= moveMask;
+        occupancy[BOTH] ^= moveMask;
     }
 
     private void promotionAndCapture(int to, long fromMask, long toMask, long moveMask, int movingPiece
-            , int capturedPiece, int promotedPiece, int side) {
+            , int capturedPiece, int promotionBase, int side) {
 
-        byte promoIdx = (byte)(side + promotedPiece);
+        byte promotionPiece = (byte)(side + promotionBase);
 
         pieceBB[movingPiece] ^= fromMask;
-        pieceBB[promoIdx] ^= toMask;
+        pieceBB[promotionPiece] ^= toMask;
         pieceBB[capturedPiece] ^= toMask;
 
-        pieceAt[to] = promoIdx;
+        pieceAt[to] = promotionPiece;
 
         occupancy[side] ^= moveMask;
         occupancy[0x1 ^ side] ^= toMask;
-        occupancy[2] ^= fromMask;
+        occupancy[BOTH] ^= fromMask;
     }
 
     private void kingSideCastle(int to, long moveMaskKing, int movingPiece, int side) {
 
-        byte rookIndex = (byte)(6 + side);
-        long rookPos = Square.H1.pos() << (side * 56);
+        byte rookIndex = (byte)(W_ROOK + side);
+        long rookPos = SQUARE_BB[A7] << (side * 56);
 
         long moveMaskR = (rookPos | rookPos >>> 2);
         long moveMaskCombined = (moveMaskKing | moveMaskR);
@@ -211,13 +202,13 @@ public class BoardState {
         pieceAt[to + 1] = -1;
 
         occupancy[side] ^= moveMaskCombined;
-        occupancy[2] ^= moveMaskCombined;
+        occupancy[BOTH] ^= moveMaskCombined;
     }
 
     private void queenSideCastle(int to, long moveMaskKing, int movingPiece, int side) {
 
-        byte rookIndex = (byte)(6 + side);
-        long rookPos = Square.A1.pos() << (side * 56);
+        byte rookIndex = (byte)(W_ROOK + side);
+        long rookPos = SQUARE_BB[A1] << (side * 56);
 
         long moveMaskR = (rookPos | rookPos << 3);
         long moveMaskCombined = (moveMaskKing | moveMaskR);
@@ -230,7 +221,7 @@ public class BoardState {
         pieceAt[to - 2] = -1;
 
         occupancy[side] ^= moveMaskCombined;
-        occupancy[2] ^= moveMaskCombined;
+        occupancy[BOTH] ^= moveMaskCombined;
     }
 
     private void pawnDoubleMove(int to, long toMask, long moveMask, int movingPiece,  int side) {
@@ -243,10 +234,9 @@ public class BoardState {
         }
     }
 
-    private void enPassant(int to, long fromMask, long toMask, int movingPiece, int side) {
+    private void enPassantCapture(int to, long toMask, long moveMask, int movingPiece, int side) {
 
-        int capColor = 0x1 ^ side;
-        long moveMask = (fromMask | toMask);
+        int oppSide = 0x1 ^ side;
         long capBit = toMask;
 
         switch (side) {
@@ -261,17 +251,18 @@ public class BoardState {
         }
 
         pieceBB[movingPiece] ^= moveMask;
-        pieceBB[capColor] ^= capBit;
+        pieceBB[oppSide] ^= capBit; //pawn indices align with side
 
         pieceAt[to] = (byte)movingPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[capColor] ^= capBit;
-        occupancy[2] ^= (moveMask | capBit);
+        occupancy[oppSide] ^= capBit;
+        occupancy[BOTH] ^= (moveMask | capBit);
     }
 
     private void updateCastlingRights(int from, int to) {
         castlingRights &= (CASTLING_MASK_BY_SQUARE[from] & CASTLING_MASK_BY_SQUARE[to]);
+
     }
 
     /* ==========================================================================================
@@ -284,7 +275,7 @@ public class BoardState {
      * @return A bitboard of all pieces.
      */
     public long getOccupancy() {
-        return occupancy[2];
+        return occupancy[BOTH];
     }
 
     /**
@@ -302,8 +293,8 @@ public class BoardState {
      *
      * @return The target Square, or null if en passant is not available.
      */
-    public Square getEnPassantTarget() {
-        return Square.getSquare(enPassantTarget);
+    public long getEnPassantTarget() {
+        return enPassantTarget;
     }
 
     public long getPieces(int i) {
