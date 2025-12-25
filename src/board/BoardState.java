@@ -2,6 +2,9 @@ package board;
 
 import static constants.BoardConstants.*;
 
+//TODO: add comments
+//TODO: add unmake
+//TODO: remove copy constructor
 /**
  * Represents the state of a chess board using bitboard representation.
  * <p>
@@ -62,7 +65,6 @@ public class BoardState {
     public BoardState() {
     }
 
-    //TODO: remove copy constructor
     /**
      * Deep-copy constructor for state branching during search.
      * * @param other The source board to copy from.
