@@ -2,9 +2,13 @@ package constants;
 
 public class BoardConstants {
 
-    private BoardConstants() {
-    }
+    private BoardConstants() {}
+
     public static final int BOARD_SIZE = 64;
+    public static final int DISTINCT_PIECES_COUNT = 12;
+
+    public static final int MAX_MOVES = 256;
+    public static final int MAX_GAME_LENGTH = 1024;
 
     // ================== COLORS ==================
     public static final int WHITE = 0;
@@ -12,6 +16,8 @@ public class BoardConstants {
     public static final int BOTH = 2;
 
     // ================== PIECES ==================
+    public static final int EMPTY_SQUARE = -1;
+
     public static final int P_PAWN = 0;
     public static final int P_KNIGHT = 1;
     public static final int P_BISHOP = 2;
@@ -38,6 +44,17 @@ public class BoardConstants {
             A7 = 48, B7 = 49, C7 = 50, D7 = 51, E7 = 52, F7 = 53, G7 = 54, H7 = 55,
             A8 = 56, B8 = 57, C8 = 58, D8 = 59, E8 = 60, F8 = 61, G8 = 62, H8 = 63;
 
+    public static final String[] SQUARE_NAMES = {
+            "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8",
+            "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8",
+            "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8",
+            "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8",
+            "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8",
+            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8",
+            "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8",
+            "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8",
+    };
+
     public static final int NO_SQUARE = 64;
 
     // =============== SQUARE MASKS ===============
@@ -48,8 +65,6 @@ public class BoardConstants {
             SQUARE_BB[i] = 1L << i;
         }
     }
-
-
 
     // =================== FILES ===================
     public static final long A_FILE = 0x0101010101010101L;
@@ -71,7 +86,7 @@ public class BoardConstants {
     public static final long G_RANK = 0x00FF000000000000L;
     public static final long H_RANK = 0xFF00000000000000L;
 
-    // =================== ARRAYS ==================
+    // =============== CASTLING MASKS ==============
     /**
      * A lookup table used to update castling rights efficiently.
      * When a piece moves from or to a square, the rights are bitwise AND-ed with these values.

@@ -1,6 +1,7 @@
 package board;
 
 import static constants.BoardConstants.*;
+import constants.Zobrist;
 
 //TODO: add comments
 //TODO: add unmake
@@ -30,14 +31,24 @@ public class BoardState {
     };
 
     private byte[] pieceAt = {
-            6, 2, 4, 8, 10, 4, 2, 6,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1,
-            1, 1, 1, 1, 1, 1, 1, 1,
-            7, 3, 5, 9, 11, 5, 3, 7
+
+            //RANK 1
+            W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, W_BISHOP, W_KNIGHT, W_ROOK,
+
+            //Rank 2
+            W_PAWN, W_PAWN, W_PAWN, W_PAWN, W_PAWN, W_PAWN, W_PAWN, W_PAWN,
+
+            //Ranks 3 - 6
+            EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+            EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+            EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+            EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+
+            //Rank 7
+            B_PAWN, B_PAWN, B_PAWN, B_PAWN, B_PAWN, B_PAWN, B_PAWN, B_PAWN,
+
+            //Rank 8
+            B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING, B_BISHOP, B_KNIGHT, B_ROOK
     };
 
     /**
@@ -58,6 +69,13 @@ public class BoardState {
      * bit 4 (MSB) : bKingSide
      */
     private byte castlingRights = 0xF;
+
+    private byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
+    private byte[] historyCaptures = new byte[MAX_GAME_LENGTH];
+    private short[] historyMoves = new short[MAX_GAME_LENGTH];
+    int curMove = 0;
+
+    private long posHash = Zobrist.STARTING_HASH;
 
     /**
      * Default constructor. Initializes the board to the standard starting position.
@@ -83,6 +101,7 @@ public class BoardState {
                                             state updates
      ========================================================================================== */
 
+    //TODO: add hashUpdates
     /**
      * Executes a move on the board using a 16-bit encoded integer.
      * <p>
@@ -96,11 +115,9 @@ public class BoardState {
      */
     public void makeMove(short move) {
 
-        //TODO: add utility Class Move and refactor
-
-        int from = (move >>> 6) & 0x3F;
-        int to = move & 0x3F;
-        int moveType = (move & 0xF000) >>> 12;
+        int from = Move.getFrom(move);
+        int to = Move.getTo(move);
+        int moveType = Move.getMoveType(move);
 
         long fromMask = 1L << from;
         long toMask = 1L << to;
@@ -108,7 +125,7 @@ public class BoardState {
 
         int movingPiece = pieceAt[from];
         int capturedPiece = pieceAt[to];
-        int promotionBase = 2 + ((moveType & 0x3) << 1);
+        int promotionBase = Move.getPromotedPieceBase(moveType);
 
         int side = movingPiece & 1;
 
@@ -136,6 +153,9 @@ public class BoardState {
 //        assert((occs[0] & occs[1]) == 0);
 //        assert(bitboards[10] != 0 && bitboards[11] != 0);
     }
+
+    //TODO: start and finish
+    public void unmakeMove() {}
 
     private void quietMove(int to, int movingPiece, long moveMask, int side) {
 
