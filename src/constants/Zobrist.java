@@ -20,7 +20,7 @@ public class Zobrist {
     public static final long[] PIECE_SQUARE_KEYS = new long[DISTINCT_PIECES_COUNT * BOARD_SIZE];
     public static final long[] EN_PASSANT_KEYS = new long[BOARD_SIZE + 1];
     public static final long[] CASTLING_KEYS = new long[16];
-    public static final long[] SIDE_KEYS = new long[2];
+    public static final long SIDE_KEY;
 
     public static final long STARTING_HASH;
 
@@ -41,7 +41,7 @@ public class Zobrist {
         }
 
 
-        SIDE_KEYS[BLACK] = random.nextLong();
+        SIDE_KEY= random.nextLong();
 
 
         for (int i = 8; i < 16; i++) {
@@ -77,7 +77,6 @@ public class Zobrist {
         defaultPosition1 ^= PIECE_SQUARE_KEYS[B_KING * BOARD_SIZE + 60];
 
         defaultPosition1 ^= EN_PASSANT_KEYS[64];
-        defaultPosition1 ^= SIDE_KEYS[WHITE];
         defaultPosition1 ^= CASTLING_KEYS[15];
         STARTING_HASH = defaultPosition1;
     }

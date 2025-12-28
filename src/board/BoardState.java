@@ -1,11 +1,12 @@
 package board;
 
 import static constants.BoardConstants.*;
-import constants.Zobrist;
+import static constants.Zobrist.*;
 
 //TODO: add comments
 //TODO: add unmake
 //TODO: remove copy constructor
+
 /**
  * Represents the state of a chess board using bitboard representation.
  * <p>
@@ -55,7 +56,7 @@ public class BoardState {
      * Occupancy bitboards.
      * Index 0: White pieces, Index 1: Black pieces, Index 2: Combined (all) pieces.
      */
-    private long[] occupancy = {0xFFFFL, 0xFFFF000000000000L, 0xFFFF00000000FFFFL};
+    private long[] occupancy = {0xFFFFL, 0xFFFF000000000000L};
 
     /**
      * Bitmask representing the single square available for an en passant capture.
@@ -75,7 +76,9 @@ public class BoardState {
     private short[] historyMoves = new short[MAX_GAME_LENGTH];
     int curMove = 0;
 
-    private long posHash = Zobrist.STARTING_HASH;
+    private long zobristHash = STARTING_HASH;
+
+    private int side = 0;
 
     /**
      * Default constructor. Initializes the board to the standard starting position.
@@ -101,7 +104,6 @@ public class BoardState {
                                             state updates
      ========================================================================================== */
 
-    //TODO: add hashUpdates
     /**
      * Executes a move on the board using a 16-bit encoded integer.
      * <p>
@@ -119,171 +121,239 @@ public class BoardState {
         int to = Move.getTo(move);
         int moveType = Move.getMoveType(move);
 
-        long fromMask = 1L << from;
-        long toMask = 1L << to;
-        long moveMask = (fromMask | toMask);
-
-        int movingPiece = pieceAt[from];
-        int capturedPiece = pieceAt[to];
-        int promotionBase = Move.getPromotedPieceBase(moveType);
-
-        int side = movingPiece & 1;
-
+        //remove side, the previous Castling Rights and the previous enPassantTarget from the Hash
+        zobristHash ^= SIDE_KEY ^ CASTLING_KEYS[castlingRights] ^ EN_PASSANT_KEYS[Long.numberOfTrailingZeros(enPassantTarget)];
         enPassantTarget = 0x0L;
 
         switch (moveType) {
 
-            case 0 -> quietMove(to, movingPiece, moveMask, side);
-            case 1 -> pawnDoubleMove(to, toMask, moveMask, movingPiece, side);
-            case 2 -> kingSideCastle(to, moveMask, movingPiece, side);
-            case 3 -> queenSideCastle(to, moveMask, movingPiece, side);
-            case 4 -> capture(to, fromMask, toMask, moveMask, movingPiece, capturedPiece, side);
-            case 5 -> enPassantCapture(to, toMask, moveMask, movingPiece, side);
+            case 0 -> quietMove(from, to);
+            case 1 -> pawnDoubleMove(from, to);
+            case 2 -> kingSideCastle(from, to);
+            case 3 -> queenSideCastle(from, to);
+            case 4 -> capture(from, to);
+            case 5 -> enPassantCapture(from, to);
 
-            case 8, 9, 10, 11 -> promotion(to, fromMask, toMask, moveMask, movingPiece, promotionBase, side);
+            case 8, 9, 10, 11 -> promotion(from, to, moveType);
 
-            case 12, 13, 14, 15 -> promotionAndCapture(to, fromMask, toMask, moveMask, movingPiece, capturedPiece, promotionBase, side);
+            case 12, 13, 14, 15 -> promotionAndCapture(from, to, moveType);
         }
 
-        pieceAt[from] = -1;
-
         updateCastlingRights(from, to);
+        side ^= 1;
 
-//        assert((occs[0] | occs[1]) == occs[2]);
-//        assert((occs[0] & occs[1]) == 0);
-//        assert(bitboards[10] != 0 && bitboards[11] != 0);
+//        assert((occupancy[0] & occupancy[1]) == 0);
+//        assert(pieceBB[10] != 0 && pieceBB[11] != 0);
     }
 
     //TODO: start and finish
-    public void unmakeMove() {}
+    public void unmakeMove() {
+    }
 
-    private void quietMove(int to, int movingPiece, long moveMask, int side) {
+    private void quietMove(int from, int to) {
+
+        long moveMask = (1L << from) | (1L << to);
+
+        int movingPiece = pieceAt[from];
 
         pieceBB[movingPiece] ^= moveMask;
 
-        pieceAt[to] = (byte)movingPiece;
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) movingPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[BOTH] ^= moveMask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to];
     }
 
-    private void capture(int to, long fromMask, long toMask, long moveMask, int movingPiece, int capturedPiece, int side) {
+    private void capture(int from, int to) {
+
+        int oppSide = 1 ^ side;
+
+        long toMask = 1L << to;
+        long moveMask = 1L << from | toMask;
+
+        int movingPiece = pieceAt[from];
+        int capturedPiece = pieceAt[to];
 
         pieceBB[movingPiece] ^= moveMask;
         pieceBB[capturedPiece] ^= toMask;
 
-        pieceAt[to] = (byte)movingPiece;
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) movingPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[0x1 ^ side] ^= toMask;
-        occupancy[BOTH] ^= fromMask;
+        occupancy[oppSide] ^= toMask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to]
+                ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to];
     }
 
-    private void promotion(int to, long fromMask, long toMask, long moveMask, int movingPiece, int promotionBase, int side) {
+    private void promotion(int from, int to, int moveType) {
 
-        byte promotionPiece = (byte)(side + promotionBase);
+        long fromMask = 1L << from;
+        long toMask = 1L << to;
+        long moveMask = fromMask | toMask;
+
+        int movingPiece = pieceAt[from];
+        int promotionPiece = side + Move.getPromotedPieceBase(moveType);
 
         pieceBB[movingPiece] ^= fromMask;
         pieceBB[promotionPiece] ^= toMask;
 
-        pieceAt[to] = promotionPiece;
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) promotionPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[BOTH] ^= moveMask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
+
     }
 
-    private void promotionAndCapture(int to, long fromMask, long toMask, long moveMask, int movingPiece
-            , int capturedPiece, int promotionBase, int side) {
+    private void promotionAndCapture(int from, int to, int moveType) {
 
-        byte promotionPiece = (byte)(side + promotionBase);
+        int oppSide = 1 ^ side;
+
+        long fromMask = 1L << from;
+        long toMask = 1L << to;
+        long moveMask = fromMask | toMask;
+
+        int movingPiece = pieceAt[from];
+        int capturedPiece = pieceAt[to];
+        int promotionPiece = side + Move.getPromotedPieceBase(moveType);
 
         pieceBB[movingPiece] ^= fromMask;
-        pieceBB[promotionPiece] ^= toMask;
         pieceBB[capturedPiece] ^= toMask;
+        pieceBB[promotionPiece] ^= toMask;
 
-        pieceAt[to] = promotionPiece;
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) promotionPiece;
 
         occupancy[side] ^= moveMask;
-        occupancy[0x1 ^ side] ^= toMask;
-        occupancy[BOTH] ^= fromMask;
+        occupancy[oppSide] ^= toMask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to]
+                ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
     }
 
-    private void kingSideCastle(int to, long moveMaskKing, int movingPiece, int side) {
+    private void kingSideCastle(int from, int to) {
 
-        byte rookIndex = (byte)(W_ROOK + side);
-        long rookPos = SQUARE_BB[A7] << (side * 56);
+        int rookFrom = to + 1;
+        int rookTo = to - 1;
 
-        long moveMaskR = (rookPos | rookPos >>> 2);
-        long moveMaskCombined = (moveMaskKing | moveMaskR);
+        long moveMaskK = 1L << from | 1L << to;
+        long moveMaskR = 1L << rookFrom | 1L << rookTo;
+        long moveMaskCombined = (moveMaskK | moveMaskR);
 
-        pieceBB[movingPiece] ^= moveMaskKing;
-        pieceBB[rookIndex] ^= moveMaskR;
+        int movingKing = pieceAt[from];
+        int movingRook = W_ROOK + side;
 
-        pieceAt[to] = (byte)(movingPiece);
-        pieceAt[to - 1] = rookIndex;
-        pieceAt[to + 1] = -1;
+        pieceBB[movingKing] ^= moveMaskK;
+        pieceBB[movingRook] ^= moveMaskR;
+
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) movingKing;
+
+        pieceAt[rookFrom] = EMPTY_SQUARE;
+        pieceAt[rookTo] = (byte) movingRook;
 
         occupancy[side] ^= moveMaskCombined;
-        occupancy[BOTH] ^= moveMaskCombined;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + to]
+                ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
+                ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
+
     }
 
-    private void queenSideCastle(int to, long moveMaskKing, int movingPiece, int side) {
+    private void queenSideCastle(int from, int to) {
 
-        byte rookIndex = (byte)(W_ROOK + side);
-        long rookPos = SQUARE_BB[A1] << (side * 56);
+        int rookFrom = to - 2;
+        int rookTo = to + 1;
 
-        long moveMaskR = (rookPos | rookPos << 3);
-        long moveMaskCombined = (moveMaskKing | moveMaskR);
+        long moveMaskK = 1L << from | 1L << to;
+        long moveMaskR = 1L << rookFrom | 1L << rookTo;
+        long moveMaskCombined = (moveMaskK | moveMaskR);
 
-        pieceBB[movingPiece] ^= moveMaskKing;
-        pieceBB[rookIndex] ^= moveMaskR;
+        int movingKing = pieceAt[from];
+        int movingRook = W_ROOK + side;
 
-        pieceAt[to] = (byte)(movingPiece);
-        pieceAt[to + 1] = rookIndex;
-        pieceAt[to - 2] = -1;
+        pieceBB[movingKing] ^= moveMaskK;
+        pieceBB[movingRook] ^= moveMaskR;
+
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) movingKing;
+
+        pieceAt[rookFrom] = EMPTY_SQUARE;
+        pieceAt[rookTo] = (byte) movingRook;
 
         occupancy[side] ^= moveMaskCombined;
-        occupancy[BOTH] ^= moveMaskCombined;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + to]
+                ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
+                ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
     }
 
-    private void pawnDoubleMove(int to, long toMask, long moveMask, int movingPiece,  int side) {
+    private void pawnDoubleMove(int from, int to) {
 
-        quietMove(to, movingPiece, moveMask, side);
+        quietMove(from, to);
 
         switch (side) {
-            case 0 -> enPassantTarget = toMask >>> 8;
-            case 1 -> enPassantTarget = toMask << 8;
+            case 0 -> enPassantTarget = (1L << to) >>> 8;
+            case 1 -> enPassantTarget = (1L << to) << 8;
         }
+
+        zobristHash ^= EN_PASSANT_KEYS[Long.numberOfTrailingZeros(enPassantTarget)];
     }
 
-    private void enPassantCapture(int to, long toMask, long moveMask, int movingPiece, int side) {
+    private void enPassantCapture(int from, int to) {
 
-        int oppSide = 0x1 ^ side;
-        long capBit = toMask;
+        int oppSide = 1 ^ side;
+
+        int captured = to;
+
+        long toMask = 1L << to;
+        long moveMask = 1L << from | toMask;
+        long captureMask = toMask;
+
+        int movingPiece = pieceAt[from];
+        int capturedPiece = oppSide; //pawn indices align with side
 
         switch (side) {
             case 0 -> {
-                capBit >>>= 8;
-                pieceAt[to - 8] = -1;
+                captured = to - 8;
+                captureMask >>>= 8;
             }
             case 1 -> {
-                capBit <<= 8;
-                pieceAt[to + 8] = -1;
+                captured = to + 8;
+                captureMask <<= 8;
             }
         }
 
-        pieceBB[movingPiece] ^= moveMask;
-        pieceBB[oppSide] ^= capBit; //pawn indices align with side
 
-        pieceAt[to] = (byte)movingPiece;
+        pieceBB[movingPiece] ^= moveMask;
+        pieceBB[capturedPiece] ^= captureMask;
+
+        pieceAt[from] = EMPTY_SQUARE;
+        pieceAt[to] = (byte) movingPiece;
+        pieceAt[captured] = EMPTY_SQUARE;
 
         occupancy[side] ^= moveMask;
-        occupancy[oppSide] ^= capBit;
-        occupancy[BOTH] ^= (moveMask | capBit);
+        occupancy[oppSide] ^= captureMask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
+                ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + captured]
+                ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to];
     }
 
     private void updateCastlingRights(int from, int to) {
         castlingRights &= (CASTLING_MASK_BY_SQUARE[from] & CASTLING_MASK_BY_SQUARE[to]);
+        zobristHash ^= CASTLING_KEYS[castlingRights];
 
     }
 
@@ -297,17 +367,17 @@ public class BoardState {
      * @return A bitboard of all pieces.
      */
     public long getOccupancy() {
-        return occupancy[BOTH];
+        return occupancy[WHITE] | occupancy[BLACK];
     }
 
     /**
      * Retrieves the occupancy mask for a specific color.
      *
-     * @param color The side to query.
+     * @param color The side to query (0) = WHITE | (1) = BLACK.
      * @return A bitboard of all pieces belonging to the specified color.
      */
-    public long getColorOccupancy(SideColor color) {
-        return occupancy[color.ordinal()];
+    public long getColorOccupancy(int color) {
+        return occupancy[color];
     }
 
     /**
