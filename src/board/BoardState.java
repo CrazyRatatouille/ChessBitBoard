@@ -72,13 +72,20 @@ public class BoardState {
     private byte castlingRights = 0xF;
 
     private byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
+    private long[] historyHash = new long[MAX_GAME_LENGTH];
     private byte[] historyCaptures = new byte[MAX_GAME_LENGTH];
+    private byte[] historyEnPassant = new byte[MAX_GAME_LENGTH];
     private short[] historyMoves = new short[MAX_GAME_LENGTH];
+    private byte[] historyHalfMoves = new byte[MAX_GAME_LENGTH];
     int curMove = 0;
 
     private long zobristHash = STARTING_HASH;
 
-    private int side = 0;
+    private int side = WHITE;
+
+    private int halfMoveCounter = 0;
+
+    static final int[] HALF_MOVE_RESET_MASK = {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
     /**
      * Default constructor. Initializes the board to the standard starting position.
@@ -101,7 +108,7 @@ public class BoardState {
     }
 
     /* ==========================================================================================
-                                            state updates
+                                              make move
      ========================================================================================== */
 
     /**
@@ -146,10 +153,6 @@ public class BoardState {
 //        assert(pieceBB[10] != 0 && pieceBB[11] != 0);
     }
 
-    //TODO: start and finish
-    public void unmakeMove() {
-    }
-
     private void quietMove(int from, int to) {
 
         long moveMask = (1L << from) | (1L << to);
@@ -165,6 +168,8 @@ public class BoardState {
 
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to];
+
+        halfMoveCounter += halfMoveCounter * HALF_MOVE_RESET_MASK[movingPiece] + 1; //Resets on pawn Moves
     }
 
     private void capture(int from, int to) {
@@ -189,6 +194,8 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to];
+
+        halfMoveCounter = 1;
     }
 
     private void promotion(int from, int to, int moveType) {
@@ -211,6 +218,7 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
 
+        halfMoveCounter = 1;
     }
 
     private void promotionAndCapture(int from, int to, int moveType) {
@@ -238,6 +246,8 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
+
+        halfMoveCounter = 1;
     }
 
     private void kingSideCastle(int from, int to) {
@@ -249,7 +259,7 @@ public class BoardState {
         long moveMaskR = 1L << rookFrom | 1L << rookTo;
         long moveMaskCombined = (moveMaskK | moveMaskR);
 
-        int movingKing = pieceAt[from];
+        int movingKing = W_KING + side;
         int movingRook = W_ROOK + side;
 
         pieceBB[movingKing] ^= moveMaskK;
@@ -268,6 +278,7 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
 
+        halfMoveCounter++;
     }
 
     private void queenSideCastle(int from, int to) {
@@ -279,7 +290,7 @@ public class BoardState {
         long moveMaskR = 1L << rookFrom | 1L << rookTo;
         long moveMaskCombined = (moveMaskK | moveMaskR);
 
-        int movingKing = pieceAt[from];
+        int movingKing = W_KING + side;
         int movingRook = W_ROOK + side;
 
         pieceBB[movingKing] ^= moveMaskK;
@@ -297,6 +308,8 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
+
+        halfMoveCounter++;
     }
 
     private void pawnDoubleMove(int from, int to) {
@@ -309,6 +322,8 @@ public class BoardState {
         }
 
         zobristHash ^= EN_PASSANT_KEYS[Long.numberOfTrailingZeros(enPassantTarget)];
+
+        halfMoveCounter = 1;
     }
 
     private void enPassantCapture(int from, int to) {
@@ -335,7 +350,6 @@ public class BoardState {
             }
         }
 
-
         pieceBB[movingPiece] ^= moveMask;
         pieceBB[capturedPiece] ^= captureMask;
 
@@ -349,12 +363,191 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + captured]
                 ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to];
+
+        halfMoveCounter = 1;
     }
 
     private void updateCastlingRights(int from, int to) {
         castlingRights &= (CASTLING_MASK_BY_SQUARE[from] & CASTLING_MASK_BY_SQUARE[to]);
         zobristHash ^= CASTLING_KEYS[castlingRights];
 
+    }
+
+    /* ==========================================================================================
+                                             unmake move
+     ========================================================================================== */
+
+    //TODO: refactor to make it faster
+    public void unmakeMove1() {
+
+        short move = historyMoves[--curMove];
+        side ^= 1;
+
+        int from = Move.getFrom(move);
+        int to = Move.getTo(move);
+        int captured = to;
+
+        int moveType = Move.getMoveType(move);
+
+        int movedPiece = pieceAt[to];
+        byte capturedPiece = historyCaptures[curMove];
+
+        long fromMask = 1L << from;
+        long toMask = 1L << to;
+
+        pieceBB[movedPiece] ^= fromMask | toMask;
+
+        pieceAt[from] = (byte)movedPiece;
+        pieceAt[to] = EMPTY_SQUARE;
+
+        occupancy[side] ^= fromMask | toMask;
+
+        //promotion
+        if ((moveType & 0x8) != 0) {
+
+            int pawnIndex = W_PAWN + side;
+
+            pieceBB[movedPiece] ^= fromMask;
+            pieceBB[pawnIndex] ^= fromMask;
+
+            pieceAt[from] = (byte)pawnIndex;
+        }
+
+        //capture
+        if ((moveType & 0x4) != 0) {
+
+            long capturedMask = toMask;
+
+            //enPassant
+            if ((moveType & 0xD) == 0x5) {
+                captured += (side == WHITE)? -8 : 8;
+                capturedMask = 1L << captured;
+            }
+
+            pieceBB[capturedPiece] ^= capturedMask;
+
+            pieceAt[captured] = capturedPiece;
+
+            occupancy[1 ^ side] ^= capturedMask;
+        }
+
+        //castle
+        if (moveType == 0x3 || moveType == 0x2) {
+
+            int sideOffset = 56 * side;
+
+            int rookFrom = A1 + sideOffset;
+            int rookTo = D1 + sideOffset;
+
+            //kingSide
+            if (moveType == 0x2) {
+                rookFrom = H1 + sideOffset;
+                rookTo = F1 + sideOffset;
+            }
+
+            long rookMask = 1L << rookFrom | 1L << rookTo;
+
+            pieceBB[W_ROOK + side] ^= rookMask;
+
+            pieceAt[rookFrom] = (byte)(W_ROOK + side);
+            pieceAt[rookTo] = EMPTY_SQUARE;
+
+            occupancy[side] ^= rookMask;
+        }
+
+        zobristHash = historyHash[curMove];
+        enPassantTarget = historyEnPassant[curMove];
+        castlingRights = historyCastlingRights[curMove];
+        halfMoveCounter = historyHalfMoves[curMove];
+    }
+
+    public void unmakeMove() {
+
+        short move = historyMoves[--curMove];
+        side ^= 1;
+
+        int from = Move.getFrom(move);
+        int to = Move.getTo(move);
+        int moveType = Move.getMoveType(move);
+
+        switch (moveType) {
+            case 0, 1 -> unmakeQuit(from, to);
+            case 2 -> unmakeKingCastle(from, to);
+            case 3 -> unmakeQueenCastle(from, to);
+            case 4 -> {}
+            case 5 -> {}
+
+            case 8, 9, 10, 11 -> {}
+
+            case 12, 13, 14, 15 -> {}
+        }
+
+        zobristHash = historyHash[curMove];
+        enPassantTarget = historyEnPassant[curMove];
+        castlingRights = historyCastlingRights[curMove];
+        halfMoveCounter = historyHalfMoves[curMove];
+    }
+
+    private void unmakeQuit(int from, int to) {
+
+        long moveMask = 1L << from | 1L << to;
+
+        int movedPiece = pieceAt[to];
+
+        pieceBB[movedPiece] ^= moveMask;
+
+        pieceAt[from] = (byte)movedPiece;
+        pieceAt[to] = EMPTY_SQUARE;
+
+        occupancy[side] ^= moveMask;
+    }
+
+    private void unmakeKingCastle(int from, int to) {
+
+        int rookFrom = to + 1;
+        int rookTo = to - 1;
+
+        long moveMaskK = 1L << from | 1L << to;
+        long moveMaskR = 1L << rookFrom | 1L << rookTo;
+        long moveMaskCombined = (moveMaskK | moveMaskR);
+
+        int movingKing = W_KING + side;
+        int movingRook = W_ROOK + side;
+
+        pieceBB[movingKing] ^= moveMaskK;
+        pieceBB[movingRook] ^= moveMaskR;
+
+        pieceAt[from] = (byte)movingKing;
+        pieceAt[to] = EMPTY_SQUARE;
+
+        pieceAt[rookFrom] = (byte)movingRook;
+        pieceAt[rookTo] = EMPTY_SQUARE;
+
+        occupancy[side] ^= moveMaskCombined;
+    }
+
+    private void unmakeQueenCastle(int from, int to) {
+
+        int rookFrom = to - 2;
+        int rookTo = to + 1;
+
+        long moveMaskK = 1L << from | 1L << to;
+        long moveMaskR = 1L << rookFrom | 1L << rookTo;
+        long moveMaskCombined = (moveMaskK | moveMaskR);
+
+        int movingKing = W_KING + side;
+        int movingRook = W_ROOK + side;
+
+        pieceBB[movingKing] ^= moveMaskK;
+        pieceBB[movingRook] ^= moveMaskR;
+
+        pieceAt[from] = (byte)movingKing;
+        pieceAt[to] = EMPTY_SQUARE;
+
+        pieceAt[rookFrom] = (byte)movingRook;
+        pieceAt[rookTo] = EMPTY_SQUARE;
+
+        occupancy[side] ^= moveMaskCombined;
     }
 
     /* ==========================================================================================
