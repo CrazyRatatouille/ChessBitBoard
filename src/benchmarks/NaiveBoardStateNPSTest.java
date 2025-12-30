@@ -1,23 +1,19 @@
 package benchmarks;
 
 import board.BoardState;
-
 import java.util.Random;
+
+/**
+ * AI WRITTEN, specifically Gemini <br> <br>
+ *
+ * This benchmark was created to test how different approaches lead to different speed in NPS. The purpose of this
+ * Class isn't to market this as a self-written proper test to compare to other engines, but rather for data gathering
+ */
 public class NaiveBoardStateNPSTest {
 
-
-
-//    public static void main(String[] args) {
-//
-//        for (int i = 0; i < 1_000_000_000; i++) {
-//
-//        }
-//    }
-
     private static final int ITERATIONS = 1_000_000_000;
-    private static final int WARMUP_ITERATIONS = 100_000;
+    private static final int WARMUP_ITERATIONS = 10_000_000;
     private static final int MOVES_CACHE_SIZE = 4096;
-    // ^ Must be power of 2 for fast bitwise AND masking
 
     public static void main(String[] args) {
         System.out.println("Initializing Benchmark...");
@@ -33,7 +29,6 @@ public class NaiveBoardStateNPSTest {
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
             short move = randomMoves[i & (MOVES_CACHE_SIZE - 1)];
 
-//            System.out.println(Move.toString(move));
             board.makeMove(move);
             checkSum += board.getOccupancy(); // Read something
             board.unmakeMove();
@@ -70,33 +65,6 @@ public class NaiveBoardStateNPSTest {
         // Print checksum to ensure JIT didn't optimize away the warmup
         if (checkSum == 1) System.out.print("");
     }
-
-//    private static short[] generateSafeRandomMoves() {
-//        short[] moves = new short[MOVES_CACHE_SIZE];
-//        Random rng = new Random(12345);
-//
-//        for (int i = 0; i < MOVES_CACHE_SIZE; i++) {
-//            // 1. FROM: Only pick squares that definitely have pieces
-//            //    (Rows 1,2 for White, 7,8 for Black)
-//            //    0-15 and 48-63
-//            int from = rng.nextBoolean() ? rng.nextInt(16) : 48 + rng.nextInt(16);
-//
-//            // 2. TO: Any square
-//            int to = rng.nextInt(64);
-//            if (from == to) to = (to + 1) % 64;
-//
-//            // 3. TYPE: Force Quiet Move (0)
-//            //    Captures crash if 'to' is empty. Castling crashes if rooks missing.
-//            //    Quiet moves are safe for raw speed testing.
-//            int type = 0;
-//
-//            // 4. Encode (Standard 16-bit move)
-//            //    Ensure this shifting matches your Move.java exactly
-//            int moveInt = (to & 0x3F) | ((from & 0x3F) << 6) | ((type & 0xF) << 12);
-//            moves[i] = (short) moveInt;
-//        }
-//        return moves;
-//    }
 
     /**
      * Generates moves that are guaranteed to be "Index Safe" for the STARTING POSITION.

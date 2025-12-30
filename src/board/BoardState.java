@@ -73,12 +73,13 @@ public class BoardState {
     private int halfMoveCounter = 0;
     int curMove = 0;
 
-    private byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
-    private long[] historyHash = new long[MAX_GAME_LENGTH];
-    private int[] historyCaptures = new int[MAX_GAME_LENGTH];
-    private long[] historyEnPassant = new long[MAX_GAME_LENGTH];
-    private short[] historyMoves = new short[MAX_GAME_LENGTH];
-    private int[] historyHalfMoves = new int[MAX_GAME_LENGTH];
+    //TODO: future optimization moving complete history into one long[]
+    private final byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
+    private final long[] historyHash = new long[MAX_GAME_LENGTH];
+    private final int[] historyCaptures = new int[MAX_GAME_LENGTH];
+    private final long[] historyEnPassant = new long[MAX_GAME_LENGTH];
+    private final short[] historyMoves = new short[MAX_GAME_LENGTH];
+    private final int[] historyHalfMoves = new int[MAX_GAME_LENGTH];
 
     /* ==========================================================================================
                                               make move
@@ -336,11 +337,11 @@ public class BoardState {
         int capturedPawn = oppSide;
 
         switch (side) {
-            case 0 -> {
+            case WHITE -> {
                 captured = to - 8;
                 capturedMask >>>= 8;
             }
-            case 1 -> {
+            case BLACK -> {
                 captured = to + 8;
                 capturedMask <<= 8;
             }

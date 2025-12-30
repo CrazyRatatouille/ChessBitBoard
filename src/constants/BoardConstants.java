@@ -45,14 +45,14 @@ public class BoardConstants {
             A8 = 56, B8 = 57, C8 = 58, D8 = 59, E8 = 60, F8 = 61, G8 = 62, H8 = 63;
 
     public static final String[] SQUARE_NAMES = {
-            "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8",
-            "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8",
-            "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8",
-            "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8",
-            "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8",
-            "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8",
-            "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8",
-            "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8",
+            "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+            "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+            "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+            "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+            "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+            "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+            "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+            "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
     };
 
     public static final int NO_SQUARE = 64;
@@ -77,14 +77,14 @@ public class BoardConstants {
     public static final long H_FILE = 0x8080808080808080L;
 
     // =================== RANKS ===================
-    public static final long A_RANK = 0x00000000000000FFL;
-    public static final long B_RANK = 0x000000000000FF00L;
-    public static final long C_RANK = 0x0000000000FF0000L;
-    public static final long D_RANK = 0x00000000FF000000L;
-    public static final long E_RANK = 0x000000FF00000000L;
-    public static final long F_RANK = 0x0000FF0000000000L;
-    public static final long G_RANK = 0x00FF000000000000L;
-    public static final long H_RANK = 0xFF00000000000000L;
+    public static final long FIRST_RANK = 0x00000000000000FFL;
+    public static final long SECOND_RANK = 0x000000000000FF00L;
+    public static final long THIRD_RANK = 0x0000000000FF0000L;
+    public static final long FOURTH_RANK = 0x00000000FF000000L;
+    public static final long FIFTH_RANK = 0x000000FF00000000L;
+    public static final long SIXTH_RANK = 0x0000FF0000000000L;
+    public static final long SEVENTH_RANK = 0x00FF000000000000L;
+    public static final long EIGHT_RANK = 0xFF00000000000000L;
 
     // =============== CASTLING MASKS ==============
     /**
