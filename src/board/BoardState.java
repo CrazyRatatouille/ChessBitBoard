@@ -75,16 +75,15 @@ public class BoardState {
 
     private byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
     private long[] historyHash = new long[MAX_GAME_LENGTH];
-    private byte[] historyCaptures = new byte[MAX_GAME_LENGTH];
+    private int[] historyCaptures = new int[MAX_GAME_LENGTH];
     private long[] historyEnPassant = new long[MAX_GAME_LENGTH];
     private short[] historyMoves = new short[MAX_GAME_LENGTH];
-    private byte[] historyHalfMoves = new byte[MAX_GAME_LENGTH];
+    private int[] historyHalfMoves = new int[MAX_GAME_LENGTH];
 
     /* ==========================================================================================
                                               make move
      ========================================================================================== */
 
-    //TODO: populate history
     /**
      * Executes a move on the board using a 16-bit encoded integer.
      * <p>
@@ -102,9 +101,15 @@ public class BoardState {
         int to = Move.getTo(move);
         int moveType = Move.getMoveType(move);
 
+        historyHash[curMove] = zobristHash;
+        historyCastlingRights[curMove] = castlingRights;
+        historyHalfMoves[curMove] = halfMoveCounter;
+        historyMoves[curMove] = move;
+        historyEnPassant[curMove] = enPassantTarget;
+
         //remove side, the previous Castling Rights and the previous enPassantTarget from the Hash
         zobristHash ^= SIDE_KEY ^ CASTLING_KEYS[castlingRights] ^ EN_PASSANT_KEYS[Long.numberOfTrailingZeros(enPassantTarget)];
-        enPassantTarget = 0x0L;
+        enPassantTarget = 0;
 
         switch (moveType) {
 
@@ -121,8 +126,10 @@ public class BoardState {
         }
 
         updateCastlingRights(from, to);
+        
         side = 1 ^ side;
-
+        curMove++;
+        
 //        assert((occupancy[0] & occupancy[1]) == 0);
 //        assert(pieceBB[10] != 0 && pieceBB[11] != 0);
     }
@@ -145,8 +152,10 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to];
 
-        halfMoveCounter = halfMoveCounter * HALF_MOVE_RESET_MASK[movingPiece] + 1; //Resets on pawn Moves + 1 for made move
-    }
+        historyCaptures[curMove] = EMPTY_SQUARE;
+
+        halfMoveCounter *= HALF_MOVE_RESET_MASK[movingPiece];
+}
 
     private void capture(int from, int to) {
 
@@ -172,7 +181,9 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[movingPiece * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to];
 
-        halfMoveCounter = 1;
+        historyCaptures[curMove] = capturedPiece;
+
+        halfMoveCounter = 0;
     }
 
     private void promotion(int from, int to, int moveType) {
@@ -195,7 +206,9 @@ public class BoardState {
         zobristHash ^= PIECE_SQUARE_KEYS[movingPawn * BOARD_SIZE + from]
                 ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
 
-        halfMoveCounter = 1;
+        historyCaptures[curMove] = EMPTY_SQUARE;
+
+        halfMoveCounter = 0;
     }
 
     private void promotionAndCapture(int from, int to, int moveType) {
@@ -224,7 +237,9 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[capturedPiece * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[promotionPiece * BOARD_SIZE + to];
 
-        halfMoveCounter = 1;
+        historyCaptures[curMove] = capturedPiece;
+
+        halfMoveCounter = 0;
     }
 
     private void kingSideCastle(int from, int to) {
@@ -254,6 +269,8 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
+
+        historyCaptures[curMove] = EMPTY_SQUARE;
 
         halfMoveCounter++;
     }
@@ -286,6 +303,8 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[movingKing * BOARD_SIZE + to]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookFrom]
                 ^ PIECE_SQUARE_KEYS[movingRook * BOARD_SIZE + rookTo];
+
+        historyCaptures[curMove] = EMPTY_SQUARE;
 
         halfMoveCounter++;
     }
@@ -341,13 +360,14 @@ public class BoardState {
                 ^ PIECE_SQUARE_KEYS[capturedPawn * BOARD_SIZE + captured]
                 ^ PIECE_SQUARE_KEYS[movingPawn * BOARD_SIZE + to];
 
-        halfMoveCounter = 1;
+        historyCaptures[curMove] = capturedPawn;
+
+        halfMoveCounter = 0;
     }
 
     private void updateCastlingRights(int from, int to) {
         castlingRights &= (CASTLING_MASK_BY_SQUARE[from] & CASTLING_MASK_BY_SQUARE[to]);
         zobristHash ^= CASTLING_KEYS[castlingRights];
-
     }
 
     /* ==========================================================================================
