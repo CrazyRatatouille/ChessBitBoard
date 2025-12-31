@@ -10,6 +10,9 @@ public class BitboardMasks {
     public static final long[] KNIGHT_MASK = new long[BOARD_SIZE];
     public static final long[] KING_MASK = new long[BOARD_SIZE];
 
+    public static final  long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
+    public static final long[] BISHOP_BLOCKER_MASK = new long[BOARD_SIZE];
+
     static {
         for (int i = 0; i < BOARD_SIZE; i++) {
 
@@ -29,6 +32,30 @@ public class BitboardMasks {
                     positionMask >>> 8 | positionMask << 8
                     | (positionMask & ~A_FILE) >>> 9 | (positionMask & ~A_FILE) >>> 1 | (positionMask & ~A_FILE) << 7
                     | (positionMask & ~H_FILE) >>> 7 | (positionMask & ~H_FILE) << 1 | (positionMask & ~H_FILE) << 9;
+
+            ROOK_BLOCKER_MASK[i] = (positionMask ^ (A_FILE << (i & (7)))) & ~(FIRST_RANK | EIGHT_RANK)
+                    | (positionMask ^ (FIRST_RANK) << ((i >>> 3) * 8)) & ~(A_FILE | H_FILE);
+
+            BISHOP_BLOCKER_MASK[i] = bishopEmptyAttacks(positionMask);
+            BISHOP_BLOCKER_MASK[i] &= ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
         }
+    }
+
+    private static long bishopEmptyAttacks(long from) {
+        long attacks = 0L;
+
+        long nw = (from & ~A_FILE) << 7;
+        long sw = (from & ~A_FILE) >>> 9;
+        long ne = (from & ~H_FILE) << 9;
+        long se = (from & ~H_FILE) >>> 7;
+
+        for (int i = 0; i < 7; i++) {
+            attacks |= nw | sw | ne | se;
+            nw = (nw & ~A_FILE) << 7;
+            sw = (sw & ~A_FILE) >>> 9;
+            ne = (ne & ~H_FILE) << 9;
+            se = (se & ~H_FILE) >>> 7;
+        }
+        return attacks;
     }
 }
