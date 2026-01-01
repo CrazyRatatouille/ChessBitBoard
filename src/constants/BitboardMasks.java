@@ -1,43 +1,61 @@
 package constants;
 
 import static constants.BoardConstants.*;
+import tools.MagicFinder;
 
 public class BitboardMasks {
 
     private BitboardMasks(){}
 
+    private static int BISHOP_MASK_SIZE;
+    private static int ROOK_MASK_SIZE;
+
     public static final long[] PAWN_MASK = new long[2 * BOARD_SIZE];
     public static final long[] KNIGHT_MASK = new long[BOARD_SIZE];
     public static final long[] KING_MASK = new long[BOARD_SIZE];
 
-    public static final  long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
     public static final long[] BISHOP_BLOCKER_MASK = new long[BOARD_SIZE];
+    public static final  long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
+
+    public static final int[] BISHOP_MBB_OFFSETS = MagicFinder.BishopMBBOffsets();
+    public static final int[] ROOK_MBB_OFFSETS = MagicFinder.RookMBBOffsets();
+
+    public static long[] BISHOP_MAGICS;
+    public static long[] ROOK_MAGICS;
 
     static {
-        for (int i = 0; i < BOARD_SIZE; i++) {
+        ROOK_MASK_SIZE = BISHOP_MASK_SIZE = 0;
 
-            long positionMask = 1L << i;
+        for (int sq = 0; sq < BOARD_SIZE; sq++) {
 
-            PAWN_MASK[i] = ((positionMask & ~FIRST_RANK) & ~A_FILE) << 7 |  ((positionMask & ~FIRST_RANK) & ~H_FILE) << 9;
-            PAWN_MASK[BOARD_SIZE + i] = ((positionMask & ~EIGHT_RANK) & ~A_FILE) >>> 9 |  ((positionMask & ~EIGHT_RANK) & ~H_FILE) >>> 7;
+            long positionMask = 1L << sq;
 
-            KNIGHT_MASK[i] =
+            PAWN_MASK[sq] = ((positionMask & ~FIRST_RANK) & ~A_FILE) << 7 |  ((positionMask & ~FIRST_RANK) & ~H_FILE) << 9;
+            PAWN_MASK[BOARD_SIZE + sq] = ((positionMask & ~EIGHT_RANK) & ~A_FILE) >>> 9 |  ((positionMask & ~EIGHT_RANK) & ~H_FILE) >>> 7;
+
+            KNIGHT_MASK[sq] =
                     (positionMask & ~A_FILE) >>> 17 | (positionMask & ~A_FILE) << 15
                     | (positionMask & ~H_FILE) >>> 15 | (positionMask & ~H_FILE) << 17
                     | (positionMask & ~(A_FILE | B_FILE)) >>> 10 | (positionMask & ~(A_FILE | B_FILE)) << 6
                     | (positionMask & ~(G_FILE | H_FILE)) >>> 6 | (positionMask & ~(G_FILE | H_FILE)) << 10;
 
 
-            KING_MASK[i] =
+            KING_MASK[sq] =
                     positionMask >>> 8 | positionMask << 8
                     | (positionMask & ~A_FILE) >>> 9 | (positionMask & ~A_FILE) >>> 1 | (positionMask & ~A_FILE) << 7
                     | (positionMask & ~H_FILE) >>> 7 | (positionMask & ~H_FILE) << 1 | (positionMask & ~H_FILE) << 9;
 
-            ROOK_BLOCKER_MASK[i] = (positionMask ^ (A_FILE << (i & (7)))) & ~(FIRST_RANK | EIGHT_RANK)
-                    | (positionMask ^ (FIRST_RANK) << ((i >>> 3) * 8)) & ~(A_FILE | H_FILE);
+            ROOK_BLOCKER_MASK[sq] = (positionMask ^ (A_FILE << (sq & (7)))) & ~(FIRST_RANK | EIGHT_RANK)
+                    | (positionMask ^ (FIRST_RANK) << ((sq >>> 3) * 8)) & ~(A_FILE | H_FILE);
 
-            BISHOP_BLOCKER_MASK[i] = bishopEmptyAttacks(positionMask);
-            BISHOP_BLOCKER_MASK[i] &= ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
+            BISHOP_BLOCKER_MASK[sq] = bishopEmptyAttacks(positionMask);
+            BISHOP_BLOCKER_MASK[sq] &= ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
+
+            BISHOP_MASK_SIZE += 1 << Long.bitCount(BISHOP_BLOCKER_MASK[sq]);
+            ROOK_MASK_SIZE += 1 << Long.bitCount(ROOK_BLOCKER_MASK[sq]);
+
+            BISHOP_MAGICS = MagicFinder.findBishopMagics();
+            ROOK_MAGICS = MagicFinder.findRookMagics();
         }
     }
 
