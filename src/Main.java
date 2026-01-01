@@ -1,9 +1,12 @@
 import tools.MagicFinder;
 
+import constants.BitboardMasks;
+
+import java.util.Arrays;
+
 public class Main {
 
     public static void main(String[] args){
-//        MagicFinder.findRookMagics();
-        MagicFinder.findBishopMagics();
+        System.out.println(Arrays.toString(BitboardMasks.BISHOP_MAGICS));
     }
 }

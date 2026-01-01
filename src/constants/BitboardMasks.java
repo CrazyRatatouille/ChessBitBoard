@@ -20,8 +20,8 @@ public class BitboardMasks {
     public static final int[] BISHOP_MBB_OFFSETS = MagicFinder.BishopMBBOffsets();
     public static final int[] ROOK_MBB_OFFSETS = MagicFinder.RookMBBOffsets();
 
-    public static long[] BISHOP_MAGICS;
-    public static long[] ROOK_MAGICS;
+    public static final long[] BISHOP_MAGICS = MagicFinder.findBishopMagics();
+    public static final long[] ROOK_MAGICS = MagicFinder.findRookMagics();
 
     static {
         ROOK_MASK_SIZE = BISHOP_MASK_SIZE = 0;
@@ -51,11 +51,8 @@ public class BitboardMasks {
             BISHOP_BLOCKER_MASK[sq] = bishopEmptyAttacks(positionMask);
             BISHOP_BLOCKER_MASK[sq] &= ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
 
-            BISHOP_MASK_SIZE += 1 << Long.bitCount(BISHOP_BLOCKER_MASK[sq]);
-            ROOK_MASK_SIZE += 1 << Long.bitCount(ROOK_BLOCKER_MASK[sq]);
-
-            BISHOP_MAGICS = MagicFinder.findBishopMagics();
-            ROOK_MAGICS = MagicFinder.findRookMagics();
+//            BISHOP_MASK_SIZE += 1 << Long.bitCount(BISHOP_BLOCKER_MASK[sq]);
+//            ROOK_MASK_SIZE += 1 << Long.bitCount(ROOK_BLOCKER_MASK[sq]);
         }
     }
 
