@@ -599,4 +599,8 @@ public class BoardState {
     public long getPieces(int i) {
         return pieceBB[i];
     }
+
+    public int getSide() {
+        return side;
+    }
 }
