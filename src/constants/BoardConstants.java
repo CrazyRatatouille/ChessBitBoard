@@ -104,4 +104,12 @@ public class BoardConstants {
 
     // ============= MOVE RESET MASKS =============
     public static final int[] HALF_MOVE_RESET_MASK = {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+    public static final short QUIET_MOVE = 0x0;
+    public static final short DOUBLE_PAWN_PUSH = 0x1;
+    public static final short KING_SIDE_CASTLE = 0x2;
+    public static final short QUEEN_SIDE_CASTLE = 0x3;
+    public static final short CAPTURE = 0x4;
+    public static final short EP_CAPTURE = 0x5;
+    public static final short PROMOTION = 0x8;
 }

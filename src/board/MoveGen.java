@@ -5,16 +5,18 @@ import static constants.BitboardMasks.*;
 import board.Move;
 import constants.BitboardMasks;
 
+import java.util.Arrays;
+
 public class MoveGen {
 
-    //TODO: UNFINISHED, PRETTY MUCH EVERYTHING IS STILL LEFT TO DO
     private MoveGen() {}
 
-
     //TODO: potentially remove paramater and change BoardState to static class
+    //TODO: refactor such, that object creation is avoided: short[] -> void?
     public static short[] moves(BoardState boardState) {
 
         short[] moves = new short[MAX_MOVES];
+        Arrays.fill(moves, (short) -1);
 
         int side = boardState.getSide();
         int oppSide = 1 ^ side;
@@ -28,13 +30,11 @@ public class MoveGen {
         index = addKnightMoves(boardState, moves, index, side, myOcc, oppOcc);
         index = addBishopMoves(boardState, moves,  index, side, myOcc, oppOcc, fullOcc);
         index = addRookMoves(boardState, moves,  index, side, myOcc, oppOcc, fullOcc);
-
+        index = addQueenMoves(boardState, moves, index, side, myOcc, oppOcc, fullOcc);
+        addKingMoves(boardState, moves, index, side, myOcc, oppOcc, fullOcc);
 
         return moves;
     }
-
-//    private void legalCheck(short move) {
-//    }
 
     private static int addWPMoves(BoardState boardState, short[] moves, long oppOcc, long fullOcc) {
 
@@ -63,11 +63,13 @@ public class MoveGen {
                 int moveType = 0;
                 short move;
 
-                if ((moveMask & oppOcc) != 0) moveType |= 0x4;
-                if ((moveMask & enPassantTarget) != 0) moveType |= 0x5;
+                if ((moveMask & oppOcc) != 0) moveType |= CAPTURE;
+                if ((moveMask & enPassantTarget) != 0) moveType |= EP_CAPTURE;
+
+                if ((moveMask >>> 16) == mask) moveType |= DOUBLE_PAWN_PUSH;
 
                 if ((moveMask & EIGHT_RANK) != 0) {
-                    moveType |= 0x8;
+                    moveType |= PROMOTION;
 
                     for (int i = 0; i < 4; i++) {
                         moveType = (moveType & 0xC) | i;
@@ -114,11 +116,13 @@ public class MoveGen {
                 int moveType = 0;
                 short move;
 
-                if ((moveMask & oppOcc) != 0) moveType |= 0x4;
-                if ((moveMask & enPassantTarget) != 0) moveType |= 0x5;
+                if ((moveMask & oppOcc) != 0) moveType |= CAPTURE;
+                if ((moveMask & enPassantTarget) != 0) moveType |= EP_CAPTURE;
+
+                if ((moveMask << 16) == mask) moveType |= DOUBLE_PAWN_PUSH;
 
                 if ((moveMask & FIRST_RANK) != 0) {
-                    moveType |= 0x8;
+                    moveType |= PROMOTION;
 
                     for (int i = 0; i < 4; i++) {
                         moveType = (moveType & 0xC) | i;
@@ -258,4 +262,57 @@ public class MoveGen {
         return index;
     }
 
+    private static int addKingMoves(BoardState boardState, short[] moves, int index, int side, long myOcc,long oppOcc, long fullOcc) {
+
+        long king = boardState.getPieces(W_KING + side);
+        int from = Long.numberOfTrailingZeros(king);
+
+        long atkMask = KING_MASK[from] & ~myOcc;
+
+        while (atkMask != 0) {
+
+            long moveMask = (-atkMask) & atkMask;
+            int to = Long.numberOfTrailingZeros(moveMask);
+
+            int moveType = ((moveMask & oppOcc) != 0)? 0x4 : 0;
+
+            short move = Move.encode(from, to, moveType);
+            moves[index++] = move;
+
+            atkMask -= moveMask;
+        }
+
+        long castlingRights = (boardState.castlingRights() & (0x3L << (2 * side))) >>> (2 * side);
+
+        long relevantRank = FIRST_RANK << (side * 56);
+
+        if ((castlingRights & 0x2) != 0) {
+            int to = from + 2;
+            int moveType = 0x2;
+
+            long fSq = (F_FILE & relevantRank) & fullOcc;
+            long gSq = (G_FILE & relevantRank) & fullOcc;
+
+            if ((fSq | gSq) == 0) {
+                short move = Move.encode(from, to, moveType);
+                moves[index++] = move;
+            }
+        }
+
+        if ((castlingRights & 0x1) != 0) {
+            int to = from - 2;
+            int moveType = 0x3;
+
+            long bSq = (B_FILE & relevantRank) & fullOcc;
+            long cSq = (C_FILE & relevantRank) & fullOcc;
+            long dSq = (D_FILE & relevantRank) & fullOcc;
+
+            if ((bSq | cSq | dSq) == 0) {
+                short move = Move.encode(from, to, moveType);
+                moves[index++] = move;
+            }
+        }
+
+        return index;
+    }
 }

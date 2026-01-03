@@ -1,5 +1,6 @@
 package board;
 
+import static constants.BitboardMasks.*;
 import static constants.BoardConstants.*;
 import static constants.Zobrist.*;
 
@@ -114,12 +115,12 @@ public class BoardState {
 
         switch (moveType) {
 
-            case 0 -> quietMove(from, to);
-            case 1 -> pawnDoubleMove(from, to);
-            case 2 -> kingSideCastle(from, to);
-            case 3 -> queenSideCastle(from, to);
-            case 4 -> capture(from, to);
-            case 5 -> enPassantCapture(from, to);
+            case QUIET_MOVE -> quietMove(from, to);
+            case DOUBLE_PAWN_PUSH -> pawnDoubleMove(from, to);
+            case KING_SIDE_CASTLE -> kingSideCastle(from, to);
+            case QUEEN_SIDE_CASTLE -> queenSideCastle(from, to);
+            case CAPTURE -> capture(from, to);
+            case EP_CAPTURE -> enPassantCapture(from, to);
 
             case 8, 9, 10, 11 -> promotion(from, to, moveType);
 
@@ -385,11 +386,11 @@ public class BoardState {
         int moveType = Move.getMoveType(move);
 
         switch (moveType) {
-            case 0, 1 -> unmakeQuiet(from, to);
-            case 2 -> unmakeKingCastle(from, to);
-            case 3 -> unmakeQueenCastle(from, to);
-            case 4 -> unmakeCapture(from, to);
-            case 5 -> unmakeEnPassantCapture(from, to);
+            case QUIET_MOVE, DOUBLE_PAWN_PUSH -> unmakeQuiet(from, to);
+            case KING_SIDE_CASTLE -> unmakeKingCastle(from, to);
+            case QUEEN_SIDE_CASTLE -> unmakeQueenCastle(from, to);
+            case CAPTURE -> unmakeCapture(from, to);
+            case EP_CAPTURE -> unmakeEnPassantCapture(from, to);
 
             case 8, 9, 10, 11 -> unmakePromotion(from, to, moveType);
 
@@ -602,5 +603,123 @@ public class BoardState {
 
     public int getSide() {
         return side;
+    }
+
+    public int castlingRights() {
+        return castlingRights;
+    }
+
+    /* ==========================================================================================
+                                           check for check
+     ========================================================================================== */
+
+    public boolean isInCheck (int side) {
+
+        int oppSide = 1 ^ side;
+
+        long oppOcc = getColorOccupancy(oppSide);
+        long fullOcc = getOccupancy();
+
+        long king = pieceBB[W_KING + side];
+
+        long pawnAtkMaks = (side == WHITE)? bPawnAtk() : wPawnAtk();
+        long oppAtkMask = pawnAtkMaks | knightAtk(oppSide) | bishopAtk(oppSide, oppOcc, fullOcc)
+                | rookAtk(oppSide, oppOcc, fullOcc) | queenAtk(oppSide, oppOcc, fullOcc) | kingAtk(oppSide);
+
+        return ((king & oppAtkMask) != 0);
+    }
+
+    //TODO: the attack methods must be moved a class responsible for this functionality
+    private long wPawnAtk() {
+        long pawns = pieceBB[W_PAWN];
+        return ((pawns & ~A_FILE) << 7) | ((pawns & ~H_FILE) << 9);
+    }
+
+    private long bPawnAtk() {
+        long pawns = pieceBB[B_PAWN];
+        return ((pawns & ~A_FILE) >>> 9) | ((pawns & ~H_FILE) >>> 7);
+    }
+
+    private long knightAtk(int side) {
+
+        long knights = pieceBB[W_KNIGHT + side];
+        long fullAtkMask = 0;
+
+        while (knights != 0) {
+
+            long fromMask = (-knights) & knights;
+            int from = Long.numberOfTrailingZeros(fromMask);
+
+            fullAtkMask |= KNIGHT_MASK[from];
+
+            knights -= fromMask;
+        }
+
+        return fullAtkMask;
+    }
+
+    private long bishopAtk(int side, long myOcc, long fullOcc) {
+
+        long bishops = getPieces(W_BISHOP + side);
+        long fullAtkMask = 0;
+
+        while (bishops != 0) {
+
+            long mask = (-bishops) & bishops;
+            int from = Long.numberOfTrailingZeros(mask);
+
+            long atkMask = lookUpBishop(from, myOcc, fullOcc);
+            fullAtkMask |= atkMask;
+
+            bishops -= mask;
+        }
+
+        return fullAtkMask;
+    }
+
+    private long rookAtk(int side, long myOcc, long fullOcc) {
+
+        long rooks = getPieces(W_ROOK + side);
+        long fullAtkMask = 0;
+
+        while (rooks != 0) {
+
+            long mask = (-rooks) & rooks;
+            int from = Long.numberOfTrailingZeros(mask);
+
+            long atkMask = lookUpRook(from, myOcc, fullOcc);
+            fullAtkMask |= atkMask;
+
+            rooks -= mask;
+        }
+
+        return fullAtkMask;
+    }
+
+    private long queenAtk(int side, long myOcc, long fullOcc) {
+
+        long queens = getPieces(W_QUEEN + side);
+        long fullAtkMask = 0;
+
+        while (queens != 0) {
+
+            long mask = (-queens) & queens;
+            int from = Long.numberOfTrailingZeros(mask);
+
+            long atkMask = lookUpBishop(from, myOcc, fullOcc) | lookUpRook(from, myOcc, fullOcc);
+            fullAtkMask |= atkMask;
+
+            queens -= mask;
+        }
+
+        return fullAtkMask;
+    }
+
+    private long kingAtk(int side) {
+
+        long king = pieceBB[W_KING + side];
+        int from = Long.numberOfTrailingZeros(king);
+
+        return KING_MASK[from];
     }
 }

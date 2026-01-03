@@ -1,7 +1,6 @@
 package board;
 
-import static constants.BoardConstants.SQUARE_NAMES;
-import static constants.BoardConstants.W_KNIGHT;
+import static constants.BoardConstants.*;
 
 public class Move {
 
