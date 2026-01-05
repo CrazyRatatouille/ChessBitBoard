@@ -1,5 +1,9 @@
 package board;
 
+import constants.Zobrist;
+
+import java.util.Arrays;
+
 import static constants.BitboardMasks.*;
 import static constants.BoardConstants.*;
 import static constants.Zobrist.*;
@@ -42,7 +46,7 @@ public class BoardState {
      * Indexing: [0,1] Pawns, [2,3] Knights, [4,5] Bishops, [6,7] Rooks, [8,9] Queens, [10,11] Kings.
      * Even indices are White, odd indices are Black.
      */
-    private long[] pieceBB = {
+    private static long[] pieceBB = {
             0xFF00L, 0x00FF000000000000L,
             0x0042L, 0x4200000000000000L,
             0x0024L, 0x2400000000000000L,
@@ -72,7 +76,8 @@ public class BoardState {
     private long zobristHash = STARTING_HASH;
 
     private int halfMoveCounter = 0;
-    int curMove = 0;
+    private int fullMoveCounter = 0;
+    private int curMove = 0;
 
     //TODO: future optimization moving complete history into one long[]
     private final byte[] historyCastlingRights = new byte[MAX_GAME_LENGTH];
@@ -129,6 +134,7 @@ public class BoardState {
 
         updateCastlingRights(from, to);
         
+        fullMoveCounter += side;
         side = 1 ^ side;
         curMove++;
         
@@ -156,7 +162,7 @@ public class BoardState {
 
         historyCaptures[curMove] = EMPTY_SQUARE;
 
-        halfMoveCounter *= HALF_MOVE_RESET_MASK[movingPiece];
+        halfMoveCounter = (halfMoveCounter + 1) * HALF_MOVE_RESET_MASK[movingPiece];
 }
 
     private void capture(int from, int to) {
@@ -597,7 +603,7 @@ public class BoardState {
         return enPassantTarget;
     }
 
-    public long getPieces(int i) {
+    public static long getPieces(int i) {
         return pieceBB[i];
     }
 
@@ -630,17 +636,17 @@ public class BoardState {
     }
 
     //TODO: the attack methods must be moved a class responsible for this functionality
-    private long wPawnAtk() {
+    public static long wPawnAtk() {
         long pawns = pieceBB[W_PAWN];
         return ((pawns & ~A_FILE) << 7) | ((pawns & ~H_FILE) << 9);
     }
 
-    private long bPawnAtk() {
+    public static long bPawnAtk() {
         long pawns = pieceBB[B_PAWN];
         return ((pawns & ~A_FILE) >>> 9) | ((pawns & ~H_FILE) >>> 7);
     }
 
-    private long knightAtk(int side) {
+    public static long knightAtk(int side) {
 
         long knights = pieceBB[W_KNIGHT + side];
         long fullAtkMask = 0;
@@ -658,7 +664,7 @@ public class BoardState {
         return fullAtkMask;
     }
 
-    private long bishopAtk(int side, long myOcc, long fullOcc) {
+    public static long bishopAtk(int side, long myOcc, long fullOcc) {
 
         long bishops = getPieces(W_BISHOP + side);
         long fullAtkMask = 0;
@@ -677,7 +683,7 @@ public class BoardState {
         return fullAtkMask;
     }
 
-    private long rookAtk(int side, long myOcc, long fullOcc) {
+    public static long rookAtk(int side, long myOcc, long fullOcc) {
 
         long rooks = getPieces(W_ROOK + side);
         long fullAtkMask = 0;
@@ -696,7 +702,7 @@ public class BoardState {
         return fullAtkMask;
     }
 
-    private long queenAtk(int side, long myOcc, long fullOcc) {
+    public static long queenAtk(int side, long myOcc, long fullOcc) {
 
         long queens = getPieces(W_QUEEN + side);
         long fullAtkMask = 0;
@@ -715,11 +721,117 @@ public class BoardState {
         return fullAtkMask;
     }
 
-    private long kingAtk(int side) {
+    public static long kingAtk(int side) {
 
         long king = pieceBB[W_KING + side];
         int from = Long.numberOfTrailingZeros(king);
 
         return KING_MASK[from];
+    }
+
+    /* ==========================================================================================
+                                              FEN PARSER
+     ========================================================================================== */
+
+    /// A FULL LENGTH VALID FEN STRING IS EXPECTED. ELSE IT WILL NOT WORK
+    public void setPos(String FEN) {
+
+        Arrays.fill(pieceAt, (byte) -1);
+        Arrays.fill(pieceBB, 0L);
+        Arrays.fill(occupancy, 0L);
+
+        enPassantTarget = 0;
+        castlingRights = 0;
+        zobristHash = 0;
+
+        int index = 0;
+
+        String[] parts = FEN.trim().split("\\s+");
+
+        int rank = 7;
+        int file = 0;
+        int square = 0;
+
+        //Piece Placement
+        for (int i = 0; i < parts[0].length(); i++) {
+
+            char token = parts[0].charAt(i);
+
+            if (token == '/') {
+                rank--;
+                file = 0;
+            } else if (Character.isDigit(token)) {
+                file += Character.getNumericValue(token);
+            } else {
+
+                square = file + rank * 8;
+
+                switch (token) {
+                    //Black Pieces
+                    case 'p' -> setPiece(B_PAWN, square);
+                    case 'n' -> setPiece(B_KNIGHT, square);
+                    case 'b' -> setPiece(B_BISHOP, square);
+                    case 'r' -> setPiece(B_ROOK, square);
+                    case 'q' -> setPiece(B_QUEEN, square);
+                    case 'k' -> setPiece(B_KING, square);
+
+                    //White Pieces
+                    case 'P' -> setPiece(W_PAWN, square);
+                    case 'N' -> setPiece(W_KNIGHT, square);
+                    case 'B' -> setPiece(W_BISHOP, square);
+                    case 'R' -> setPiece(W_ROOK, square);
+                    case 'Q' -> setPiece(W_QUEEN, square);
+                    case 'K' -> setPiece(W_KING, square);
+                }
+
+                file++;
+            }
+        }
+
+        //Side to move
+        side = (parts[1].charAt(0) == 'w')? 0 : 1;
+        zobristHash ^= (side == BLACK)? SIDE_KEY : 0;
+
+        //Castling ability
+        for (char castleRight : parts[2].toCharArray()) {
+            switch (castleRight) {
+                case 'K' -> castlingRights |= 0b0010;
+                case 'Q' -> castlingRights |= 0b0001;
+                case 'k' -> castlingRights |= 0b1000;
+                case 'q' -> castlingRights |= 0b0100;
+            }
+        }
+        zobristHash ^= CASTLING_KEYS[castlingRights];
+
+        //En passant target square
+        if (parts[3].charAt(0) == '-') {
+            enPassantTarget = 0;
+        }
+        else {
+            file = parts[3].charAt(0) - 'a';
+            rank = parts[3].charAt(1) - '1';
+            square = file + rank * 8;
+
+            enPassantTarget = 1L << (square);
+            zobristHash ^= EN_PASSANT_KEYS[square];
+        }
+
+        //half move Counter
+        halfMoveCounter = Integer.parseInt(parts[4]);
+
+        //full move
+        fullMoveCounter = Integer.parseInt(parts[5]);
+    }
+
+    private void setPiece(int Piece, int square) {
+
+        pieceAt[square] = (byte)Piece;
+
+        long mask = 1L << square;
+
+        pieceBB[Piece] |= mask;
+        occupancy[Piece & 1] |= mask;
+
+        zobristHash ^= PIECE_SQUARE_KEYS[Piece * BOARD_SIZE + square];
     }
 }

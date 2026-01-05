@@ -28,6 +28,6 @@ public class Move {
     }
 
     public static String toString(short move) {
-        return SQUARE_NAMES[getFrom(move)] + " - " + SQUARE_NAMES[getTo(move)];
+        return SQUARE_NAMES[getFrom(move)] + SQUARE_NAMES[getTo(move)];
     }
 }

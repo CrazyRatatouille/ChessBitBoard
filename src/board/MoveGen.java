@@ -56,7 +56,7 @@ public class MoveGen {
 
             while (moveSet != 0) {
 
-                long moveMask = (- moveSet) & moveSet;
+                long moveMask = (-moveSet) & moveSet;
                 int to = Long.numberOfTrailingZeros(moveMask);
                 moveSet -= moveMask;
 
@@ -264,8 +264,14 @@ public class MoveGen {
 
     private static int addKingMoves(BoardState boardState, short[] moves, int index, int side, long myOcc,long oppOcc, long fullOcc) {
 
+        int oppSide = 1 ^ side;
         long king = boardState.getPieces(W_KING + side);
         int from = Long.numberOfTrailingZeros(king);
+
+        ////TODO: FIX THIS NPS BOTTLENECK
+        long pawnAtkMaks = (side == WHITE)? BoardState.bPawnAtk() : BoardState.wPawnAtk();
+        long oppAtkMask = pawnAtkMaks | BoardState.knightAtk(oppSide) | BoardState.bishopAtk(oppSide, oppOcc, fullOcc)
+                | BoardState.rookAtk(oppSide, oppOcc, fullOcc) | BoardState.queenAtk(oppSide, oppOcc, fullOcc) | BoardState.kingAtk(oppSide);
 
         long atkMask = KING_MASK[from] & ~myOcc;
 
@@ -286,12 +292,14 @@ public class MoveGen {
 
         long relevantRank = FIRST_RANK << (side * 56);
 
+        if (((relevantRank & E_FILE) & oppAtkMask) != 0) return index;
+
         if ((castlingRights & 0x2) != 0) {
             int to = from + 2;
             int moveType = 0x2;
 
-            long fSq = (F_FILE & relevantRank) & fullOcc;
-            long gSq = (G_FILE & relevantRank) & fullOcc;
+            long fSq = (F_FILE & relevantRank) & (fullOcc | oppAtkMask);
+            long gSq = (G_FILE & relevantRank) & (fullOcc | oppAtkMask);
 
             if ((fSq | gSq) == 0) {
                 short move = Move.encode(from, to, moveType);
@@ -304,8 +312,8 @@ public class MoveGen {
             int moveType = 0x3;
 
             long bSq = (B_FILE & relevantRank) & fullOcc;
-            long cSq = (C_FILE & relevantRank) & fullOcc;
-            long dSq = (D_FILE & relevantRank) & fullOcc;
+            long cSq = (C_FILE & relevantRank) & (fullOcc | oppAtkMask);
+            long dSq = (D_FILE & relevantRank) & (fullOcc | oppAtkMask);
 
             if ((bSq | cSq | dSq) == 0) {
                 short move = Move.encode(from, to, moveType);

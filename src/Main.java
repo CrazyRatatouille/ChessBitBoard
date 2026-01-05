@@ -7,14 +7,8 @@ public class Main {
 
     public static void main(String[] args){
 
-        long[] magics = MagicFinder.findBishopMagics();
-        StringBuilder str = new StringBuilder("{\n");
+        String test = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        for (long magic : magics) {
-            str.append("0x").append((Long.toHexString(magic))).append("L, ");
-        }
-        str.append("\n}");
-
-        System.out.println(str);
+        System.out.println(Arrays.toString(test.trim().split("\\s+")));
     }
 }

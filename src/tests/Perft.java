@@ -1,6 +1,7 @@
 package tests;
 
 import board.BoardState;
+import board.Move;
 import board.MoveGen;
 
 public class Perft {
@@ -11,25 +12,47 @@ public class Perft {
     private static final int SIMPLE_PERFT_4 = 197_281;
     private static final int SIMPLE_PERFT_5 = 4_865_609;
 
+    private static final int KIWIPETE_PERFT_1 = 48;
+    private static final int KIWIPETE_PERFT_2 = 2_039;
+    private static final int KIWIPETE_PERFT_3 = 97_862;
+    private static final int KIWIPETE_PERFT_4 = 4_085_603;
+    private static final int KIWIPETE_PERFT_5 = 193_690_690;
+    private static final String KIWIPETE_FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+
     public static void main(String[] args) {
 
         BoardState boardState = new BoardState();
 
-        runPerftTest(1, boardState, SIMPLE_PERFT_1);
-        runPerftTest(2, boardState, SIMPLE_PERFT_2);
-        runPerftTest(3, boardState, SIMPLE_PERFT_3);
-        runPerftTest(4, boardState, SIMPLE_PERFT_4);
-        runPerftTest(5, boardState, SIMPLE_PERFT_5);
+//        runPerftTest(1, boardState, SIMPLE_PERFT_1);
+//        runPerftTest(2, boardState, SIMPLE_PERFT_2);
+//        runPerftTest(3, boardState, SIMPLE_PERFT_3);
+//        runPerftTest(4, boardState, SIMPLE_PERFT_4);
+//        runPerftTest(5, boardState, SIMPLE_PERFT_5);
+//
+//        System.out.println("\nKIWIPETE PERFT:\n");
+//
+        boardState.setPos(KIWIPETE_FEN);
+//        runPerftTest(1, boardState, KIWIPETE_PERFT_1);
+//        runPerftTest(2, boardState, KIWIPETE_PERFT_2);
+//        runPerftTest(3, boardState, KIWIPETE_PERFT_3);
+//        runPerftTest(4, boardState, KIWIPETE_PERFT_4);
+//        runPerftTest(5, boardState, KIWIPETE_PERFT_5);
 
-        System.out.println("\nPERFT PASSED!");
+//        System.out.println("\nPERFT PASSED!");
 
+        //====================================================
+        //                   Personal Nodes
+        //====================================================
+
+        boardState.setPos("r3k2r/p1pNqpb1/bn2pnp1/3P4/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1");
+//        runPerftTest(1, boardState, 45);
     }
 
     private static void runPerftTest(int depth, BoardState boardState, int expected) {
 
         long startTime = System.nanoTime();
 
-        int result = perft(depth, boardState);
+        int result = perft(depth, depth, boardState);
 
         long endTime = System.nanoTime();
         long durationNano = endTime - startTime;
@@ -54,7 +77,7 @@ public class Perft {
         }
     }
 
-    private static int perft(int depth, BoardState boardState) {
+    private static int perft(int initialDepth, int depth, BoardState boardState) {
 
         if (depth == 0) {
             return 1;
@@ -69,14 +92,22 @@ public class Perft {
 
             int curSide = boardState.getSide();
 
-            boardState.makeMove(moves[index++]);
+            boardState.makeMove(moves[index]);
+
+            String debugger = Move.toString(moves[index]) + " - ";
+            index++;
 
             if (boardState.isInCheck(curSide)) {
                 boardState.unmakeMove();
                 continue;
             }
 
-            count += perft(depth - 1, boardState);
+            int perft = perft(depth, depth - 1, boardState);
+
+//            //uncomment to find diverging path
+//            if(depth == initialDepth) System.out.println(debugger + perft);
+
+            count += perft;
             boardState.unmakeMove();
         }
 
