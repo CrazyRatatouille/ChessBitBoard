@@ -607,6 +607,10 @@ public class BoardState {
         return pieceBB[i];
     }
 
+    public int pieceAt(int square) {
+        return pieceAt[square];
+    }
+
     public int getSide() {
         return side;
     }
