@@ -3,12 +3,6 @@ package benchmarks;
 import board.BoardState;
 import java.util.Random;
 
-/**
- * AI WRITTEN, specifically Gemini <br> <br>
- *
- * This benchmark was created to test how different approaches lead to different speed in NPS. The purpose of this
- * Class isn't to market this as a self-written proper test to compare to other engines, but rather for data gathering
- */
 public class NaiveBoardStateNPSTest {
 
     private static final int ITERATIONS = 1_000_000_000;
