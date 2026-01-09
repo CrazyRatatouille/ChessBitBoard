@@ -1,7 +1,5 @@
 package board;
 
-import constants.Zobrist;
-
 import java.util.Arrays;
 
 import static constants.BitboardMasks.*;
@@ -20,7 +18,7 @@ import static constants.Zobrist.*;
  */
 public class BoardState {
 
-    private byte[] pieceAt = {
+    private int[] pieceAt = {
 
             //RANK 1
             W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, W_BISHOP, W_KNIGHT, W_ROOK,
@@ -137,9 +135,6 @@ public class BoardState {
         fullMoveCounter += side;
         side = 1 ^ side;
         curMove++;
-        
-//        assert((occupancy[0] & occupancy[1]) == 0);
-//        assert(pieceBB[10] != 0 && pieceBB[11] != 0);
     }
 
     private void quietMove(int from, int to) {
@@ -603,7 +598,7 @@ public class BoardState {
         return enPassantTarget;
     }
 
-    public static long getPieces(int i) {
+    public long getPieceBB(int i) {
         return pieceBB[i];
     }
 
@@ -620,222 +615,79 @@ public class BoardState {
     }
 
     /* ==========================================================================================
-                                           check for check
+                                            state setters
      ========================================================================================== */
 
-    public boolean isInCheck (int side) {
-
-        int oppSide = 1 ^ side;
-
-        long oppOcc = getColorOccupancy(oppSide);
-        long fullOcc = getOccupancy();
-
-        long king = pieceBB[W_KING + side];
-
-        long pawnAtkMaks = (side == WHITE)? bPawnAtk() : wPawnAtk();
-        long oppAtkMask = pawnAtkMaks | knightAtk(oppSide) | bishopAtk(oppSide, oppOcc, fullOcc)
-                | rookAtk(oppSide, oppOcc, fullOcc) | queenAtk(oppSide, oppOcc, fullOcc) | kingAtk(oppSide);
-
-        return ((king & oppAtkMask) != 0);
-    }
-
-    //TODO: the attack methods must be moved a class responsible for this functionality
-    public static long wPawnAtk() {
-        long pawns = pieceBB[W_PAWN];
-        return ((pawns & ~A_FILE) << 7) | ((pawns & ~H_FILE) << 9);
-    }
-
-    public static long bPawnAtk() {
-        long pawns = pieceBB[B_PAWN];
-        return ((pawns & ~A_FILE) >>> 9) | ((pawns & ~H_FILE) >>> 7);
-    }
-
-    public static long knightAtk(int side) {
-
-        long knights = pieceBB[W_KNIGHT + side];
-        long fullAtkMask = 0;
-
-        while (knights != 0) {
-
-            long fromMask = (-knights) & knights;
-            int from = Long.numberOfTrailingZeros(fromMask);
-
-            fullAtkMask |= KNIGHT_MASK[from];
-
-            knights -= fromMask;
-        }
-
-        return fullAtkMask;
-    }
-
-    public static long bishopAtk(int side, long myOcc, long fullOcc) {
-
-        long bishops = getPieces(W_BISHOP + side);
-        long fullAtkMask = 0;
-
-        while (bishops != 0) {
-
-            long mask = (-bishops) & bishops;
-            int from = Long.numberOfTrailingZeros(mask);
-
-            long atkMask = lookUpBishop(from, myOcc, fullOcc);
-            fullAtkMask |= atkMask;
-
-            bishops -= mask;
-        }
-
-        return fullAtkMask;
-    }
-
-    public static long rookAtk(int side, long myOcc, long fullOcc) {
-
-        long rooks = getPieces(W_ROOK + side);
-        long fullAtkMask = 0;
-
-        while (rooks != 0) {
-
-            long mask = (-rooks) & rooks;
-            int from = Long.numberOfTrailingZeros(mask);
-
-            long atkMask = lookUpRook(from, myOcc, fullOcc);
-            fullAtkMask |= atkMask;
-
-            rooks -= mask;
-        }
-
-        return fullAtkMask;
-    }
-
-    public static long queenAtk(int side, long myOcc, long fullOcc) {
-
-        long queens = getPieces(W_QUEEN + side);
-        long fullAtkMask = 0;
-
-        while (queens != 0) {
-
-            long mask = (-queens) & queens;
-            int from = Long.numberOfTrailingZeros(mask);
-
-            long atkMask = lookUpBishop(from, myOcc, fullOcc) | lookUpRook(from, myOcc, fullOcc);
-            fullAtkMask |= atkMask;
-
-            queens -= mask;
-        }
-
-        return fullAtkMask;
-    }
-
-    public static long kingAtk(int side) {
-
-        long king = pieceBB[W_KING + side];
-        int from = Long.numberOfTrailingZeros(king);
-
-        return KING_MASK[from];
-    }
-
-    /* ==========================================================================================
-                                              FEN PARSER
-     ========================================================================================== */
-
-    /// A FULL LENGTH VALID FEN STRING IS EXPECTED. ELSE IT WILL NOT WORK
-    public void setPos(String FEN) {
-
-        Arrays.fill(pieceAt, (byte) -1);
+    public void clear() {
+        Arrays.fill(pieceAt, (byte) EMPTY_SQUARE);
         Arrays.fill(pieceBB, 0L);
         Arrays.fill(occupancy, 0L);
 
-        enPassantTarget = 0;
+        side = WHITE;
+        enPassantTarget = 0L;
         castlingRights = 0;
-        zobristHash = 0;
+        zobristHash = 0L;
 
-        int index = 0;
-
-        String[] parts = FEN.trim().split("\\s+");
-
-        int rank = 7;
-        int file = 0;
-        int square = 0;
-
-        //Piece Placement
-        for (int i = 0; i < parts[0].length(); i++) {
-
-            char token = parts[0].charAt(i);
-
-            if (token == '/') {
-                rank--;
-                file = 0;
-            } else if (Character.isDigit(token)) {
-                file += Character.getNumericValue(token);
-            } else {
-
-                square = file + rank * 8;
-
-                switch (token) {
-                    //Black Pieces
-                    case 'p' -> setPiece(B_PAWN, square);
-                    case 'n' -> setPiece(B_KNIGHT, square);
-                    case 'b' -> setPiece(B_BISHOP, square);
-                    case 'r' -> setPiece(B_ROOK, square);
-                    case 'q' -> setPiece(B_QUEEN, square);
-                    case 'k' -> setPiece(B_KING, square);
-
-                    //White Pieces
-                    case 'P' -> setPiece(W_PAWN, square);
-                    case 'N' -> setPiece(W_KNIGHT, square);
-                    case 'B' -> setPiece(W_BISHOP, square);
-                    case 'R' -> setPiece(W_ROOK, square);
-                    case 'Q' -> setPiece(W_QUEEN, square);
-                    case 'K' -> setPiece(W_KING, square);
-                }
-
-                file++;
-            }
-        }
-
-        //Side to move
-        side = (parts[1].charAt(0) == 'w')? 0 : 1;
-        zobristHash ^= (side == BLACK)? SIDE_KEY : 0;
-
-        //Castling ability
-        for (char castleRight : parts[2].toCharArray()) {
-            switch (castleRight) {
-                case 'K' -> castlingRights |= 0b0010;
-                case 'Q' -> castlingRights |= 0b0001;
-                case 'k' -> castlingRights |= 0b1000;
-                case 'q' -> castlingRights |= 0b0100;
-            }
-        }
-        zobristHash ^= CASTLING_KEYS[castlingRights];
-
-        //En passant target square
-        if (parts[3].charAt(0) == '-') {
-            enPassantTarget = 0;
-        }
-        else {
-            file = parts[3].charAt(0) - 'a';
-            rank = parts[3].charAt(1) - '1';
-            square = file + rank * 8;
-
-            enPassantTarget = 1L << (square);
-            zobristHash ^= EN_PASSANT_KEYS[square];
-        }
-
-        //half move Counter
-        halfMoveCounter = Integer.parseInt(parts[4]);
-
-        //full move
-        fullMoveCounter = Integer.parseInt(parts[5]);
+        // Reset Move Counters
+        halfMoveCounter = 0;
+        fullMoveCounter = 1;
+        curMove = 0;
     }
 
-    private void setPiece(int Piece, int square) {
-
-        pieceAt[square] = (byte)Piece;
-
-        long mask = 1L << square;
-
-        pieceBB[Piece] |= mask;
-        occupancy[Piece & 1] |= mask;
-
-        zobristHash ^= PIECE_SQUARE_KEYS[Piece * BOARD_SIZE + square];
+    public void setPieceAt(int square, int piece) {
+        pieceAt[square] = piece;
     }
+
+    public void updatePieceBB(int piece, long bbMask) {
+        pieceBB[piece] ^= bbMask;
+    }
+
+    public void setPieceBB(int piece, long newPieceBB){
+        pieceBB[piece] = newPieceBB;
+    }
+
+    public void updateOccupancy(int side, long mask) {
+        occupancy[side] ^= mask;
+    }
+
+    public void setOccupancy(int side, long newOccupancy) {
+        occupancy[side] = newOccupancy;
+    }
+
+    public void setSide(int newSide) {
+        side = newSide;
+    }
+
+    public void setEnPassantTarget(long newEnPassantTarget) {
+        enPassantTarget = newEnPassantTarget;
+    }
+
+    public void setCastlingRights(byte newCastlingRights) {
+        castlingRights = newCastlingRights;
+    }
+
+
+
+    public void updateZobristHash(long zobristMaks) {
+        zobristHash ^= zobristMaks;
+    }
+    public void setZobristHash(long newZobristHash) {
+        zobristHash = newZobristHash;
+    }
+
+
+
+    public void setHalfMoveCounter(int newHalfMoveCounter) {
+        halfMoveCounter = newHalfMoveCounter;
+    }
+
+    public void setFullMoveCounter(int newFullMoveCounter) {
+        fullMoveCounter = newFullMoveCounter;
+    }
+
+    public void setCurMove(int newCurMove) {
+        curMove = newCurMove;
+    }
+
+    public void resetHistory() {} //Honestly just set curMove to 0, no need to reset all stacks manually
 }

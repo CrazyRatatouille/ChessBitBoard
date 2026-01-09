@@ -2,8 +2,6 @@ package board;
 
 import static constants.BoardConstants.*;
 import static constants.BitboardMasks.*;
-import board.Move;
-import constants.BitboardMasks;
 
 import java.util.Arrays;
 
@@ -38,7 +36,7 @@ public class MoveGen {
 
     private static int addWPMoves(BoardState boardState, short[] moves, long oppOcc, long fullOcc) {
 
-        long wPawns = boardState.getPieces(W_PAWN);
+        long wPawns = boardState.getPieceBB(W_PAWN);
         long enPassantTarget = boardState.getEnPassantTarget();
 
         int index = 0;
@@ -91,7 +89,7 @@ public class MoveGen {
 
     private static int addBPawnMoves(BoardState boardState, short[] moves, long oppOcc, long fullOcc) {
 
-        long bPawns = boardState.getPieces(B_PAWN);
+        long bPawns = boardState.getPieceBB(B_PAWN);
         long enPassantTarget = boardState.getEnPassantTarget();
 
         int index = 0;
@@ -144,7 +142,7 @@ public class MoveGen {
 
     private static int addKnightMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc) {
 
-        long knights = boardState.getPieces(W_KNIGHT + side);
+        long knights = boardState.getPieceBB(W_KNIGHT + side);
 
         while (knights != 0) {
 
@@ -174,7 +172,7 @@ public class MoveGen {
     
     private static int addBishopMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
-        long bishops = boardState.getPieces(W_BISHOP + side);
+        long bishops = boardState.getPieceBB(W_BISHOP + side);
 
         while (bishops != 0) {
 
@@ -204,7 +202,7 @@ public class MoveGen {
 
     private static int addRookMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
-        long rooks = boardState.getPieces(W_ROOK + side);
+        long rooks = boardState.getPieceBB(W_ROOK + side);
 
         while (rooks != 0) {
 
@@ -234,7 +232,7 @@ public class MoveGen {
 
     private static int addQueenMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
-        long queens = boardState.getPieces(W_QUEEN + side);
+        long queens = boardState.getPieceBB(W_QUEEN + side);
 
         while (queens != 0) {
 
@@ -265,13 +263,16 @@ public class MoveGen {
     private static int addKingMoves(BoardState boardState, short[] moves, int index, int side, long myOcc,long oppOcc, long fullOcc) {
 
         int oppSide = 1 ^ side;
-        long king = boardState.getPieces(W_KING + side);
+        long king = boardState.getPieceBB(W_KING + side);
         int from = Long.numberOfTrailingZeros(king);
 
         ////TODO: FIX THIS NPS BOTTLENECK
-        long pawnAtkMaks = (side == WHITE)? BoardState.bPawnAtk() : BoardState.wPawnAtk();
-        long oppAtkMask = pawnAtkMaks | BoardState.knightAtk(oppSide) | BoardState.bishopAtk(oppSide, oppOcc, fullOcc)
-                | BoardState.rookAtk(oppSide, oppOcc, fullOcc) | BoardState.queenAtk(oppSide, oppOcc, fullOcc) | BoardState.kingAtk(oppSide);
+        long pawnAtkMaks = (side == WHITE)? Attacks.bPawnAtk(boardState) : Attacks.wPawnAtk(boardState);
+        long oppAtkMask = pawnAtkMaks | Attacks.knightAtk(boardState, oppSide)
+                | Attacks.bishopAtk(boardState, oppSide, oppOcc, fullOcc)
+                | Attacks.rookAtk(boardState, oppSide, oppOcc, fullOcc)
+                | Attacks.queenAtk(boardState, oppSide, oppOcc, fullOcc)
+                | Attacks.kingAtk(boardState, oppSide);
 
         long atkMask = KING_MASK[from] & ~myOcc;
 

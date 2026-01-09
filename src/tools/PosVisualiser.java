@@ -12,10 +12,10 @@ public class PosVisualiser {
 
     public static void main(String[] args){
 
-        BoardState boardState = new BoardState();
-        boardState.setPos("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-
-        visualizeBitboard(boardState,0b1001);
+//        BoardState boardState = new BoardState();
+//        boardState.setPos("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+//
+//        visualizeBitboard(boardState,0b1001);
     }
 
     private static final int canvasSize = 600;
@@ -102,7 +102,7 @@ public class PosVisualiser {
                 case B_KING -> path += "BlackKing.png";
             }
 
-            if(piece >= 0) myObj.drawImage(x, y, tileSize, tileSize, Image.fromResource(path));
+            if(piece >= 0) myObj.drawImage(x + 8, y + 8, tileSize - 16, tileSize - 16, Image.fromResource(path));
         }
 
         while (bitboard != 0) {
@@ -121,7 +121,6 @@ public class PosVisualiser {
 
             bitboard -= mask;
         }
-
 
         myObj.show();
     }
