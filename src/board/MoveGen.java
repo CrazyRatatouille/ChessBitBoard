@@ -2,6 +2,8 @@ package board;
 
 import static constants.BoardConstants.*;
 import static constants.BitboardMasks.*;
+import static board.Attacks.lookUpBishop;
+import static board.Attacks.lookUpRook;
 
 import java.util.Arrays;
 
@@ -9,7 +11,6 @@ public class MoveGen {
 
     private MoveGen() {}
 
-    //TODO: potentially remove paramater and change BoardState to static class
     //TODO: refactor such, that object creation is avoided: short[] -> void?
     public static short[] moves(BoardState boardState) {
 
@@ -169,7 +170,7 @@ public class MoveGen {
 
         return index;
     }
-    
+
     private static int addBishopMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
         long bishops = boardState.getPieceBB(W_BISHOP + side);

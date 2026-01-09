@@ -16,8 +16,8 @@ public class BitboardMasks {
     public static final long[] BISHOP_BLOCKER_MASK = new long[BOARD_SIZE];
     public static final  long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
 
-    private static final long[] BISHOP_MASK = new long[BISHOP_MASK_SIZE];
-    private static final long[] ROOK_MASK = new long[ROOK_MASK_SIZE];
+    public static final long[] BISHOP_MASK = new long[BISHOP_MASK_SIZE];
+    public static final long[] ROOK_MASK = new long[ROOK_MASK_SIZE];
 
 
     public static final int[] BISHOP_MBB_OFFSETS = {
@@ -185,31 +185,5 @@ public class BitboardMasks {
                 ROOK_MASK[offset + index] = (N | E | S | W);
             }
         }
-    }
-
-    public static long lookUpBishop(int sq, long myOcc ,long fullOcc) {
-
-        long magic = BISHOP_MAGICS[sq];
-        long potBlockers = BISHOP_BLOCKER_MASK[sq];
-        long blockers = potBlockers & fullOcc;
-        int shift = BOARD_SIZE - Long.bitCount(potBlockers);
-
-        int offset = BISHOP_MBB_OFFSETS[sq];
-        int index = (int) (offset + ((blockers * magic) >>> shift));
-
-        return (BISHOP_MASK[index] & ~myOcc);
-    }
-
-    public static long lookUpRook(int sq, long myOcc, long fullOcc) {
-
-        long magic = ROOK_MAGICS[sq];
-        long potBlockers = ROOK_BLOCKER_MASK[sq];
-        long blockers = potBlockers & fullOcc;
-        int shift = BOARD_SIZE - Long.bitCount(potBlockers);
-
-        int offset = ROOK_MBB_OFFSETS[sq];
-        int index = (int) (offset + ((blockers * magic) >>> shift));
-
-        return (ROOK_MASK[index] & ~myOcc);
     }
 }

@@ -5,8 +5,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static constants.BitboardMasks.*;
 import static constants.BoardConstants.*;
-import static constants.BoardConstants.P_BISHOP;
-import static constants.BoardConstants.P_ROOK;
 
 public class MagicFinder {
 

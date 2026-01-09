@@ -2,7 +2,6 @@ package board;
 
 import java.util.Arrays;
 
-import static constants.BitboardMasks.*;
 import static constants.BoardConstants.*;
 import static constants.Zobrist.*;
 
@@ -666,16 +665,13 @@ public class BoardState {
         castlingRights = newCastlingRights;
     }
 
-
-
     public void updateZobristHash(long zobristMaks) {
         zobristHash ^= zobristMaks;
     }
+
     public void setZobristHash(long newZobristHash) {
         zobristHash = newZobristHash;
     }
-
-
 
     public void setHalfMoveCounter(int newHalfMoveCounter) {
         halfMoveCounter = newHalfMoveCounter;
@@ -684,10 +680,4 @@ public class BoardState {
     public void setFullMoveCounter(int newFullMoveCounter) {
         fullMoveCounter = newFullMoveCounter;
     }
-
-    public void setCurMove(int newCurMove) {
-        curMove = newCurMove;
-    }
-
-    public void resetHistory() {} //Honestly just set curMove to 0, no need to reset all stacks manually
 }

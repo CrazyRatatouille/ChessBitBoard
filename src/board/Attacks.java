@@ -1,7 +1,6 @@
 package board;
 
 import static constants.BitboardMasks.*;
-import static constants.BitboardMasks.KING_MASK;
 import static constants.BoardConstants.*;
 
 public class Attacks {
@@ -115,5 +114,31 @@ public class Attacks {
         int from = Long.numberOfTrailingZeros(king);
 
         return KING_MASK[from];
+    }
+
+    public static long lookUpBishop(int sq, long myOcc ,long fullOcc) {
+
+        long magic = BISHOP_MAGICS[sq];
+        long potBlockers = BISHOP_BLOCKER_MASK[sq];
+        long blockers = potBlockers & fullOcc;
+        int shift = BOARD_SIZE - Long.bitCount(potBlockers);
+
+        int offset = BISHOP_MBB_OFFSETS[sq];
+        int index = (int) (offset + ((blockers * magic) >>> shift));
+
+        return (BISHOP_MASK[index] & ~myOcc);
+    }
+
+    public static long lookUpRook(int sq, long myOcc, long fullOcc) {
+
+        long magic = ROOK_MAGICS[sq];
+        long potBlockers = ROOK_BLOCKER_MASK[sq];
+        long blockers = potBlockers & fullOcc;
+        int shift = BOARD_SIZE - Long.bitCount(potBlockers);
+
+        int offset = ROOK_MBB_OFFSETS[sq];
+        int index = (int) (offset + ((blockers * magic) >>> shift));
+
+        return (ROOK_MASK[index] & ~myOcc);
     }
 }

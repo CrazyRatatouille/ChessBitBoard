@@ -1,6 +1,3 @@
-import constants.BitboardMasks;
-import tools.MagicFinder;
-
 import java.util.Arrays;
 
 public class Main {
