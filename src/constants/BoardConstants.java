@@ -103,8 +103,12 @@ public class BoardConstants {
     };
 
     // ============= MOVE RESET MASKS =============
+    /** Used to reset the half-move clock.
+     * 0 for Pawns (resets the clock via multiplication), 1 for all other pieces (preserves the clock).
+     */
     public static final int[] HALF_MOVE_RESET_MASK = {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
+    // ============= MOVE TYPE FLAGS ==============
     public static final short QUIET_MOVE = 0x0;
     public static final short DOUBLE_PAWN_PUSH = 0x1;
     public static final short KING_SIDE_CASTLE = 0x2;
@@ -112,4 +116,14 @@ public class BoardConstants {
     public static final short CAPTURE = 0x4;
     public static final short EP_CAPTURE = 0x5;
     public static final short PROMOTION = 0x8;
+
+    public static final int PROMO_N = 8;
+    public static final int PROMO_B = 9;
+    public static final int PROMO_R = 10;
+    public static final int PROMO_Q = 11;
+
+    public static final int PROMO_CAP_N = 12;
+    public static final int PROMO_CAP_B = 13;
+    public static final int PROMO_CAP_R = 14;
+    public static final int PROMO_CAP_Q = 15;
 }

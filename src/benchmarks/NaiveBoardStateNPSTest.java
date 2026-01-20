@@ -1,7 +1,11 @@
 package benchmarks;
 
-import board.BoardState;
 import java.util.Random;
+import board.BoardState;
+import board.Move;
+
+import static constants.BoardConstants.QUIET_MOVE;
+import static constants.BoardConstants.CAPTURE;
 
 public class NaiveBoardStateNPSTest {
 
@@ -19,7 +23,7 @@ public class NaiveBoardStateNPSTest {
         // 1. Warmup Phase (Compiles methods to Native Code via JIT)
         // ---------------------------------------------------------
         System.out.println("Warming up JIT...");
-        long checkSum = 0; // Prevent Dead Code Elimination
+        long checkSum = 0;
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
             short move = randomMoves[i & (MOVES_CACHE_SIZE - 1)];
 
@@ -32,11 +36,11 @@ public class NaiveBoardStateNPSTest {
         // 2. Testing Phase
         // ---------------------------------------------------------
         System.out.println("Running " + ITERATIONS + " iterations...");
-        System.gc(); // Clean up before starting
+        System.gc();
         long start = System.nanoTime();
 
         for (int i = 0; i < ITERATIONS; i++) {
-            // Fast modulo using bitwise AND (works because size is power of 2)
+
             short move = randomMoves[i & (MOVES_CACHE_SIZE - 1)];
 
             board.makeMove(move);
@@ -56,47 +60,49 @@ public class NaiveBoardStateNPSTest {
         System.out.printf("NPS (Nodes/Sec): %,d%n", nps);
         System.out.println("------------------------------------------");
 
-        // Print checksum to ensure JIT didn't optimize away the warmup
         if (checkSum == 1) System.out.print("");
     }
 
     /**
-     * Generates moves that are guaranteed to be "Index Safe" for the STARTING POSITION.
-     * Since make/unmake resets the board every time, we only need to respect the
-     * starting board layout:
-     * - Pieces exist at indices 0-15 (White) and 48-63 (Black).
-     * - Empty squares are at indices 16-47.
+     * Generates an array of random moves that abide by {@code BoardState} standards.
+     *
+     * <p>The moves are generated using the following constraints:
+     * <ul>
+     * <li><b>From:</b> Always a square in the range 0-15 (White area).</li>
+     * <li><b>To:</b> Depends on the move type:
+     * <ul>
+     * <li>{@code CAPTURE}: Targets the range 48-63 (Black area).</li>
+     * <li>{@code QUIET_MOVE}: Targets the range 16-47 (Empty area).</li>
+     * </ul>
+     * </li>
+     * </ul>
+     *
+     * @return an array of encoded move shorts (not necessarily legal in a game context)
      */
     private static short[] generateSafeRandomMoves() {
         short[] moves = new short[MOVES_CACHE_SIZE];
         Random rng = new Random(12345);
 
         for (int i = 0; i < MOVES_CACHE_SIZE; i++) {
-            boolean isCapture = rng.nextBoolean(); // 50% mix of Captures and Quiet
+            boolean isCapture = rng.nextBoolean();
 
             int from, to, type;
 
             if (isCapture) {
-                // TEST CAPTURE (Type 4)
-                // To avoid crashing, we must capture a square that HAS a piece.
-                // We simulate White capturing Black pieces directly (teleporting).
-                // Logic validity doesn't matter, only Array Access safety.
 
                 from = rng.nextInt(16);       // From White area (0-15)
                 to = 48 + rng.nextInt(16);    // To Black area (48-63)
-                type = 4;                     // Capture Move Type
+                type = CAPTURE;
 
             } else {
-                // TEST QUIET MOVE (Type 0)
-                // Move from a Piece square to an Empty square.
 
                 from = rng.nextInt(16);       // From White area (0-15)
                 to = 16 + rng.nextInt(32);    // To Empty area (16-47)
-                type = 0;                     // Quiet Move Type
+                type = QUIET_MOVE;
             }
 
             // Encode (To | From<<6 | Type<<12)
-            int moveInt = (to & 0x3F) | ((from & 0x3F) << 6) | ((type & 0xF) << 12);
+            int moveInt = Move.encode(from, to, type);
             moves[i] = (short) moveInt;
         }
         return moves;

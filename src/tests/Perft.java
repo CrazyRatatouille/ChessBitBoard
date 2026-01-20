@@ -7,6 +7,17 @@ import board.MoveGen;
 import tools.FenUtil;
 import tools.PosVisualiser;
 
+/**
+ * Performance Test (Perft) runner for validating the move generator.
+ * <p>
+ * This class runs recursive move generation tests against known node counts to verify correctness.
+ * It includes:
+ * <ul>
+ * <li><b>Starting Position:</b> Standard initial chess state.</li>
+ * <li><b>Kiwipete:</b> A famous position designed to test edge cases (discovered checks, promotions, en passant).</li>
+ * </ul>
+ * * Usage: Run {@code main()} to execute the suite. If counts match, the move generator is likely correct.
+ */
 public class Perft {
 
     private static final long SIMPLE_PERFT_1 = 20;
@@ -108,9 +119,10 @@ public class Perft {
                 continue;
             }
 
-            long perft = perft(depth, depth - 1, boardState);
+            long perft = perft(initialDepth, depth - 1, boardState);
 
             //uncomment when debugging
+            //validated using https://analog-hors.github.io/webperft/
 //            if(depth == initialDepth) System.out.println(debugger + perft);
 
             count += perft;

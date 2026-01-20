@@ -2,30 +2,87 @@ package constants;
 
 import static constants.BoardConstants.*;
 
+/**
+ * Contains pre-computed bitboards and lookup tables for piece attacks.
+ * <p>
+ * This class handles two types of attack generation:
+ * <ul>
+ * <li><b>Leaper Pieces (Pawn, Knight, King):</b> Simple static lookups based on the square.</li>
+ * <li><b>Sliding Pieces (Bishop, Rook):</b> "Magic Bitboards". A perfect hashing technique
+ * that allows for O(1) lookup of sliding attacks by hashing the specific blocker configuration
+ * on the board.</li>
+ * </ul>
+ */
 public class BitboardMasks {
 
     private BitboardMasks(){}
 
+    /**
+     * Stores pawn attack masks for both colors.
+     * <p>
+     * Layout:
+     * <ul>
+     * <li>Indices [0-63]: <b>White</b> pawn captures.</li>
+     * <li>Indices [64-127]: <b>Black</b> pawn captures.</li>
+     * </ul>
+     * Accessed via {@code PAWN_MASK[side * BOARD_SIZE + square]}.
+     */
     public static final long[] PAWN_MASK = new long[2 * BOARD_SIZE];
+
+    /**
+     * Stores knight attack masks for every square.
+     */
     public static final long[] KNIGHT_MASK = new long[BOARD_SIZE];
+
+    /**
+     * Stores king attack masks for every square.
+     */
     public static final long[] KING_MASK = new long[BOARD_SIZE];
 
+    // Sizes determined by summing 2^bits for all squares (fancy magic bitboards size)
     private static final int BISHOP_MASK_SIZE = 5248;
     private static final int ROOK_MASK_SIZE = 102400;
 
+    /**
+     * Masks indicating which squares are "relevant blockers" for a sliding piece on a given square.
+     * <p>
+     * These masks exclude the outer edges of the board because pieces on the edge cannot blocks
+     * a ray any further (the ray has already ended).
+     */
     public static final long[] BISHOP_BLOCKER_MASK = new long[BOARD_SIZE];
-    public static final  long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
+    public static final long[] ROOK_BLOCKER_MASK = new long[BOARD_SIZE];
 
+    /**
+     * The dense lookup table for Bishop attacks.
+     * <p>
+     * This array holds pre-calculated attack bitboards for every square and every possible
+     * relevant blocker configuration. It is indexed using the Magic Number hash calculated
+     * by the bishop lookup method {@link board.Attacks#lookUpBishop(int, long, long)}.
+     */
     public static final long[] BISHOP_MASK = new long[BISHOP_MASK_SIZE];
+
+    /**
+     * The dense lookup table for Rook attacks.
+     * <p>
+     * This array holds pre-calculated attack bitboards for every square and every possible
+     * relevant blocker configuration. It is indexed using the Magic Number hash calculated
+     * by the rook lookup method {@link board.Attacks#lookUpRook(int, long, long)}}.
+     */
     public static final long[] ROOK_MASK = new long[ROOK_MASK_SIZE];
-
-
+    
+    /**
+     * Offsets into the {@link #BISHOP_MASK} array for each square.
+     */
     public static final int[] BISHOP_MBB_OFFSETS = {
             0, 64, 96, 128, 160, 192, 224, 256, 320, 352, 384, 416, 448, 480, 512, 544, 576, 608, 640, 768, 896, 1024,
             1152, 1184, 1216, 1248, 1280, 1408, 1920, 2432, 2560, 2592, 2624, 2656, 2688, 2816, 3328, 3840, 3968, 4000,
             4032, 4064, 4096, 4224, 4352, 4480, 4608, 4640, 4672, 4704, 4736, 4768, 4800, 4832, 4864, 4896, 4928, 4992,
             5024, 5056, 5088, 5120, 5152, 5184
     };
+
+    /**
+     * Offsets into the {@link #ROOK_MASK} array for each square.
+     */
     public static final int[] ROOK_MBB_OFFSETS = {
             0, 4096, 6144, 8192, 10240, 12288, 14336, 16384, 20480, 22528, 23552, 24576, 25600, 26624, 27648, 28672,
             30720, 32768, 33792, 34816, 35840, 36864, 37888, 38912, 40960, 43008, 44032, 45056, 46080, 47104, 48128,
@@ -34,6 +91,10 @@ public class BitboardMasks {
             94208, 96256, 98304
     };
 
+    /**
+     * Pre-computed Magic Numbers for Bishops.
+     * Generated using {@link tools.MagicFinder}
+     */
     public static final long[] BISHOP_MAGICS = {
             0x4024010805010200L, 0x1020880200902100L, 0xC068182051880010L, 0x1140408804A2009L, 0x82404A012020004L,
             0x8002080406000880L, 0x403412095008000CL, 0x82010D03100A00L, 0x84400404640040L, 0x2083810009A2040L,
@@ -49,6 +110,11 @@ public class BitboardMasks {
             0x4008080104002810L, 0x40043004B104000L, 0xA002160484042200L, 0x24200021082800L, 0x400100940405L,
             0x1010088A0020484L, 0x40202490128204L, 0x71001004280800C0L, 0x2028600102060058L
     };
+
+    /**
+     * Pre-computed Magic Numbers for Rooks.
+     * Generated using {@link tools.MagicFinder}
+     */
     public static final long[] ROOK_MAGICS = {
             0x80018040022018L, 0x840022000401000L, 0x880086000821004L, 0x900082010010014L, 0x80040002800800L,
             0x20008100E000401L, 0x80018002000100L, 0x8200050821840042L, 0x208001C0008060L, 0x2002401000200048L,
@@ -69,47 +135,49 @@ public class BitboardMasks {
 
         for (int sq = 0; sq < BOARD_SIZE; sq++) {
 
-            long positionMask = 1L << sq;
+            long fromMask = 1L << sq;
 
-            PAWN_MASK[sq] = ((positionMask & ~FIRST_RANK) & ~A_FILE) << 7 |  ((positionMask & ~FIRST_RANK) & ~H_FILE) << 9;
-            PAWN_MASK[BOARD_SIZE + sq] = ((positionMask & ~EIGHT_RANK) & ~A_FILE) >>> 9 |  ((positionMask & ~EIGHT_RANK) & ~H_FILE) >>> 7;
+
+            //all pawns that are not on the A file are shifted by 7 bits to the left/right to calculate all valid NW/SE attacks
+            //all pawns that are not on the H file are shifted by 9 bits to the left/right to calculate all valid NE/SW attacks
+            PAWN_MASK[sq] = ((fromMask & ~FIRST_RANK) & ~A_FILE) << 7 |  ((fromMask & ~FIRST_RANK) & ~H_FILE) << 9;
+            PAWN_MASK[BOARD_SIZE + sq] = ((fromMask & ~EIGHT_RANK) & ~A_FILE) >>> 9 |  ((fromMask & ~EIGHT_RANK) & ~H_FILE) >>> 7;
 
             KNIGHT_MASK[sq] =
-                    (positionMask & ~A_FILE) >>> 17 | (positionMask & ~A_FILE) << 15
-                    | (positionMask & ~H_FILE) >>> 15 | (positionMask & ~H_FILE) << 17
-                    | (positionMask & ~(A_FILE | B_FILE)) >>> 10 | (positionMask & ~(A_FILE | B_FILE)) << 6
-                    | (positionMask & ~(G_FILE | H_FILE)) >>> 6 | (positionMask & ~(G_FILE | H_FILE)) << 10;
+                    (fromMask & ~A_FILE) >>> 17 | (fromMask & ~A_FILE) << 15
+                    | (fromMask & ~H_FILE) >>> 15 | (fromMask & ~H_FILE) << 17
+                    | (fromMask & ~(A_FILE | B_FILE)) >>> 10 | (fromMask & ~(A_FILE | B_FILE)) << 6
+                    | (fromMask & ~(G_FILE | H_FILE)) >>> 6 | (fromMask & ~(G_FILE | H_FILE)) << 10;
 
             KING_MASK[sq] =
-                    positionMask >>> 8 | positionMask << 8
-                    | (positionMask & ~A_FILE) >>> 9 | (positionMask & ~A_FILE) >>> 1 | (positionMask & ~A_FILE) << 7
-                    | (positionMask & ~H_FILE) >>> 7 | (positionMask & ~H_FILE) << 1 | (positionMask & ~H_FILE) << 9;
+                    fromMask >>> 8 | fromMask << 8
+                    | (fromMask & ~A_FILE) >>> 9 | (fromMask & ~A_FILE) >>> 1 | (fromMask & ~A_FILE) << 7
+                    | (fromMask & ~H_FILE) >>> 7 | (fromMask & ~H_FILE) << 1 | (fromMask & ~H_FILE) << 9;
 
-            ROOK_BLOCKER_MASK[sq] = (positionMask ^ (A_FILE << (sq & (7)))) & ~(FIRST_RANK | EIGHT_RANK)
-                    | (positionMask ^ (FIRST_RANK) << ((sq >>> 3) * 8)) & ~(A_FILE | H_FILE);
-
-            BISHOP_BLOCKER_MASK[sq] = bishopEmptyAttacks(positionMask);
-            BISHOP_BLOCKER_MASK[sq] &= ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
+            // Generate Relevant Blocker Masks for sliding pieces
+            ROOK_BLOCKER_MASK[sq] = (fromMask ^ (A_FILE << (sq % 8))) & ~(FIRST_RANK | EIGHT_RANK)
+                    | (fromMask ^ (FIRST_RANK << ((sq / 8) * 8))) & ~(A_FILE | H_FILE);
+            BISHOP_BLOCKER_MASK[sq] = bishopEmptyAttacks(fromMask) & ~(A_FILE | H_FILE | FIRST_RANK | EIGHT_RANK);
         }
 
         populateBishopMBB();
         populateRookMBB();
     }
 
-    private static long bishopEmptyAttacks(long from) {
+    private static long bishopEmptyAttacks(long fromMask)   {
         long attacks = 0L;
 
-        long nw = (from & ~A_FILE) << 7;
-        long sw = (from & ~A_FILE) >>> 9;
-        long ne = (from & ~H_FILE) << 9;
-        long se = (from & ~H_FILE) >>> 7;
+        long NW = (fromMask & ~A_FILE) << 7;
+        long SW = (fromMask & ~A_FILE) >>> 9;
+        long NE = (fromMask & ~H_FILE) << 9;
+        long SE = (fromMask & ~H_FILE) >>> 7;
 
         for (int i = 0; i < 7; i++) {
-            attacks |= nw | sw | ne | se;
-            nw = (nw & ~A_FILE) << 7;
-            sw = (sw & ~A_FILE) >>> 9;
-            ne = (ne & ~H_FILE) << 9;
-            se = (se & ~H_FILE) >>> 7;
+            attacks |= NW | SW | NE | SE;
+            NW = (NW & ~A_FILE) << 7;
+            SW = (SW & ~A_FILE) >>> 9;
+            NE = (NE & ~H_FILE) << 9;
+            SE = (SE & ~H_FILE) >>> 7;
         }
         return attacks;
     }
@@ -118,33 +186,36 @@ public class BitboardMasks {
 
         for (int sq = 0; sq < BOARD_SIZE; sq++) {
 
-            long origin = 1L << sq;
-            long mask = BISHOP_BLOCKER_MASK[sq];
+            long fromMask = 1L << sq;
+            long blockerMask = BISHOP_BLOCKER_MASK[sq];
 
             long magic = BISHOP_MAGICS[sq];
-            int shift = BOARD_SIZE - Long.bitCount(mask);
+            int shift = BOARD_SIZE - Long.bitCount(blockerMask);
 
             int offset = BISHOP_MBB_OFFSETS[sq];
 
-            long subset = 0;
+            long blockerSubset = 0;
 
-            for (int i = 0; i < (1 << Long.bitCount(mask)); i++) {
+            //iterate all subsets of the blockerMask
+            for (int i = 0; i < (1 << Long.bitCount(blockerMask)); i++) {
 
-                long NE = (origin & ~(subset | H_FILE)) << 9;
-                long SE = (origin & ~(subset | H_FILE)) >>> 7;
-                long SW = (origin & ~(subset | A_FILE)) >>> 9;
-                long NW = (origin & ~(subset | A_FILE)) << 7;
+                long NE = (fromMask & ~H_FILE) << 9;
+                long SE = (fromMask & ~H_FILE) >>> 7;
+                long SW = (fromMask & ~A_FILE) >>> 9;
+                long NW = (fromMask & ~A_FILE) << 7;
 
                 for (int j = 0; j < 6; j++) {
 
-                    NE |= (NE & ~(subset | H_FILE)) << 9;
-                    SE |= (SE & ~(subset | H_FILE)) >>> 7;
-                    SW |= (SW & ~(subset | A_FILE)) >>> 9;
-                    NW |= (NW & ~(subset | A_FILE)) << 7;
+                    NE |= (NE & ~(blockerSubset | H_FILE)) << 9;
+                    SE |= (SE & ~(blockerSubset | H_FILE)) >>> 7;
+                    SW |= (SW & ~(blockerSubset | A_FILE)) >>> 9;
+                    NW |= (NW & ~(blockerSubset | A_FILE)) << 7;
                 }
 
-                int index = (int) ((magic * subset) >>> shift);
-                subset = (subset - mask) & mask;
+                int index = (int) ((magic * blockerSubset) >>> shift);
+
+                // Carry-Rippler Step
+                blockerSubset = (blockerSubset - blockerMask) & blockerMask;
 
                 BISHOP_MASK[offset + index] = (NE | SE | SW | NW);
             }
@@ -155,32 +226,35 @@ public class BitboardMasks {
 
         for (int sq = 0; sq < BOARD_SIZE; sq++) {
 
-            long origin = 1L << sq;
-            long mask = ROOK_BLOCKER_MASK[sq];
+            long fromMask = 1L << sq;
+            long blockerMask = ROOK_BLOCKER_MASK[sq];
 
             long magic = ROOK_MAGICS[sq];
-            int shift = BOARD_SIZE - Long.bitCount(mask);
+            int shift = BOARD_SIZE - Long.bitCount(blockerMask);
 
             int offset = ROOK_MBB_OFFSETS[sq];
 
-            long subset = 0;
+            long blockerSubset = 0;
 
+            //iterate all subsets of the blockerMask
             for (int i = 0; i < (1 << Long.bitCount(ROOK_BLOCKER_MASK[sq])); i++) {
 
-                long N = (origin & ~subset) << 8;
-                long E = (origin & ~(subset | H_FILE)) << 1;
-                long S = (origin & ~subset) >>> 8;
-                long W = (origin & ~(subset | A_FILE)) >>> 1;
+                long N = fromMask << 8;
+                long E = (fromMask & ~H_FILE) << 1;
+                long S = fromMask >>> 8;
+                long W = (fromMask & ~A_FILE) >>> 1;
 
                 for (int j = 0; j < 7; j++) {
-                    N |= (N & ~subset) << 8;
-                    E |= (E & ~(subset | H_FILE)) << 1;
-                    S |= (S & ~subset) >>> 8;
-                    W |= (W & ~(subset | A_FILE)) >>> 1;
+                    N |= (N & ~blockerSubset) << 8;
+                    E |= (E & ~(blockerSubset | H_FILE)) << 1;
+                    S |= (S & ~blockerSubset) >>> 8;
+                    W |= (W & ~(blockerSubset | A_FILE)) >>> 1;
                 }
 
-                int index = (int) ((subset * magic) >>> shift);
-                subset = (subset - mask) & mask;
+                int index = (int) ((blockerSubset * magic) >>> shift);
+
+                // Carry-Rippler Step
+                blockerSubset = (blockerSubset - blockerMask) & blockerMask;
 
                 ROOK_MASK[offset + index] = (N | E | S | W);
             }

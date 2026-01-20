@@ -8,15 +8,16 @@ import codedraw.Palette;
 
 import java.awt.*;
 
+/**
+ * A graphical debugging utility for visualizing the internal state of the chess board.
+ * <p>
+ * This class renders a GUI window displaying:
+ * <ul>
+ * <li>The current piece placement.</li>
+ * <li>A specific 64-bit {@code bitboard} overlay (highlighted in green).</li>
+ * </ul>
+ */
 public class PosVisualiser {
-
-    public static void main(String[] args){
-
-//        BoardState boardState = new BoardState();
-//        boardState.setPos("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-//
-//        visualizeBitboard(boardState,0b1001);
-    }
 
     private static final int canvasSize = 600;
     private static final int tileSize = canvasSize / 8;
@@ -29,33 +30,27 @@ public class PosVisualiser {
 
     static {
         for (int square = 0; square < BOARD_SIZE; square++) {
-            // Calculate grid positions
+
             int col = square % 8;
             int row = square / 8;
 
             int x = col * tileSize;
             int y = row * tileSize;
 
-            // Determine if the square is light or dark
-            // (col + row) % 2 == 0 is standard for 'light' squares starting at top-left
             boolean isLightSquare = (col + row) % 2 == 0;
 
-            // 1. Draw the Square Background
+
             if (isLightSquare) {
                 myObj.setColor(myWhite);
-            } else {
-                myObj.setColor(myBlack);
-            }
-            myObj.fillSquare(x, y, tileSize);
-
-            // 2. Draw the File and Rank Label
-            // Set color to contrast the background (e.g., Black text on White square)
-            if (isLightSquare) {
+                myObj.fillSquare(x, y, tileSize);
                 myObj.setColor(myBlack);
             } else {
+                myObj.setColor(myBlack);
+                myObj.fillSquare(x, y, tileSize);
                 myObj.setColor(myWhite);
             }
 
+            //Row/Column description
             if (row != 7 && col != 7) continue;
 
             if (row == 7) {
@@ -72,7 +67,21 @@ public class PosVisualiser {
         }
     }
 
+    public static void main(String[] args){
 
+        BoardState boardState = new BoardState();
+        FenUtil.setPos(boardState, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+
+        visualizeBitboard(boardState,0b1001);
+    }
+
+    /**
+     * Renders the current board state and overlays a semi-transparent highlight
+     * for all active bits in the provided bitboard.
+     *
+     * @param boardState the current state of the game (contains piece positions)
+     * @param bitboard the 64-bit mask to visualize (e.g., an attack mask or legal moves)
+     */
     public static void visualizeBitboard(BoardState boardState, long bitboard) {
 
         for (int square = 0; square < BOARD_SIZE; square++) {

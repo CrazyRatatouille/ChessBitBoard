@@ -5,16 +5,32 @@ import board.BoardState;
 import static constants.BoardConstants.*;
 import static constants.Zobrist.*;
 
+/**
+ * Utility class for parsing Forsyth–Edwards Notation (FEN) strings.
+ * <p>
+ * This class translates standard FEN strings into the engine's internal {@link BoardState} representation.
+ * It handles piece placement, active color, castling rights, en passant targets, and move counters.
+ */
 public class FenUtil {
 
-    /// A FULL LENGTH VALID FEN STRING IS EXPECTED. ELSE IT WILL NOT WORK
+    /**
+     * Parses a FEN string and populates the given board state.
+     * <p>
+     * <b>Important:</b> This method expects a <i>complete</i> standard FEN string containing
+     * all 6 fields (Piece Placement, Side to Move, Castling Rights, En Passant, Halfmove Clock, Fullmove Number).
+     * Passing a simplified or partial FEN (e.g., just piece placement) will result in an {@link ArrayIndexOutOfBoundsException}.
+     *
+     * @param boardState the board object to populate (will be cleared before setting)
+     * @param FEN the complete FEN string to parse
+     * @throws ArrayIndexOutOfBoundsException if the FEN string does not contain all 6 required fields
+     * @throws NumberFormatException if the move counters in the FEN are not valid integers
+     */
     public static void setPos(BoardState boardState, String FEN) {
 
         int index = 0;
 
         String[] parts = FEN.trim().split("\\s+");
 
-        //board reset
         boardState.clear();
 
         int rank = 7;
