@@ -1,5 +1,7 @@
 package board;
 
+import constants.BitboardMasks;
+
 import static constants.BitboardMasks.*;
 import static constants.BoardConstants.*;
 
@@ -17,22 +19,40 @@ public class Attacks {
      */
     public static boolean isInCheck(BoardState boardState, int side) {
 
-        //toggle to the opposite side to get opposite pieces
+        long king = boardState.getPieceBB(W_KING + side);
+        return isSqareAttacked(boardState, king, side);
+    }
+
+    /**
+     * Determines whether a specific square is currently being attacked by any opponent pieces.
+     *
+     * @param boardState the current state of the board
+     * @param sqMask a bitboard mask with exactly one bit set, representing the square to evaluate
+     * @param side the side (color) of the defending piece
+     * @return {@code true} if the square is under attack by the opponent, {@code false} otherwise
+     */
+    public static boolean isSqareAttacked(BoardState boardState, long sqMask, int side) {
+
+        int sq = Long.numberOfTrailingZeros(sqMask);
         int oppSide = 1 ^ side;
 
-        long oppOcc = boardState.getColorOccupancy(oppSide);
+        long relevantPawns = BitboardMasks.PAWN_MASK[side * BOARD_SIZE + sq];
+
+        long kingAtkMask = kingAtk(boardState, oppSide);
+
+        long AtkByPawns = relevantPawns & boardState.getPieceBB(W_PAWN + oppSide);
+        long AtkByKnights = KNIGHT_MASK[sq] & boardState.getPieceBB(W_KNIGHT + oppSide);
+        long AtkByKing = kingAtkMask & sqMask;
+        if ((AtkByPawns | AtkByKnights | AtkByKing) != 0) return true;
+
         long fullOcc = boardState.getOccupancy();
 
-        long king = boardState.getPieceBB(W_KING + side);
+        long AtkOnDiagonals = lookUpBishop(sq, 0L, fullOcc)
+                & (boardState.getPieceBB(W_BISHOP + oppSide) | boardState.getPieceBB(W_QUEEN + oppSide));
+        long AtkOnStraights = lookUpRook(sq, 0L, fullOcc)
+                & (boardState.getPieceBB(W_ROOK + oppSide) | boardState.getPieceBB(W_QUEEN + oppSide));
 
-        long pawnAtkMaks = (side == WHITE)? bPawnAtk(boardState) : wPawnAtk(boardState);
-
-        //the combined attackMask of the opposite pieces to see if king is in check
-        long oppAtkMask = pawnAtkMaks | knightAtk(boardState, oppSide) | bishopAtk(boardState, oppSide, oppOcc, fullOcc)
-                | rookAtk(boardState, oppSide, oppOcc, fullOcc) | queenAtk(boardState, oppSide, oppOcc, fullOcc)
-                | kingAtk(boardState, oppSide);
-
-        return ((king & oppAtkMask) != 0);
+        return (AtkOnDiagonals | AtkOnStraights) != 0;
     }
 
     /**

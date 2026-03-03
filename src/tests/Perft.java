@@ -5,7 +5,7 @@ import board.BoardState;
 import board.Move;
 import board.MoveGen;
 import tools.FenUtil;
-import tools.PosVisualiser;
+import static constants.BoardConstants.MAX_MOVES;
 
 /**
  * Performance Test (Perft) runner for validating the move generator.
@@ -61,7 +61,7 @@ public class Perft {
         //                 Personal Positions
         //====================================================
 
-//        boardState.setPos("r3k2r/p1pNqpb1/bn2pnp1/3P4/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1");
+//        FenUtil.setPos(boardState, "r3k2r/p1pNqpb1/bn2pnp1/3P4/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1");
 //        runPerftTest(1, boardState, 45);
     }
 
@@ -102,17 +102,16 @@ public class Perft {
 
         long count = 0;
 
-        short[] moves = MoveGen.moves(boardState);
-        int index = 0;
+        int depthDiff = initialDepth - depth;
+        int curIndex = depthDiff * MAX_MOVES;
+        int maxIndex = MoveGen.moves(boardState, curIndex);
 
-        while (moves[index] != -1) {
+        while (curIndex < maxIndex) {
 
             int curSide = boardState.getSide();
 
-            boardState.makeMove(moves[index]);
-
-            String debugger = Move.toString(moves[index]) + " - ";
-            index++;
+            short move = MoveGen.getMove(curIndex++);
+            boardState.makeMove(move);
 
             if (Attacks.isInCheck(boardState, curSide)) {
                 boardState.unmakeMove();
@@ -123,6 +122,7 @@ public class Perft {
 
             //uncomment when debugging
             //validated using https://analog-hors.github.io/webperft/
+//            String debugger = Move.toString(move) + " - ";
 //            if(depth == initialDepth) System.out.println(debugger + perft);
 
             count += perft;

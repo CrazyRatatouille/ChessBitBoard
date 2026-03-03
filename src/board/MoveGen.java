@@ -5,17 +5,13 @@ import static constants.BitboardMasks.*;
 import static board.Attacks.lookUpBishop;
 import static board.Attacks.lookUpRook;
 
-import java.util.Arrays;
-
 public class MoveGen {
+
+    private static final short[] moves = new short[MAX_MOVES * MAX_GAME_LENGTH]; //~500kB could fully fit in my L2
 
     private MoveGen() {}
 
-    //TODO: refactor such, that object creation is avoided: short[] -> void?
-    public static short[] moves(BoardState boardState) {
-
-        short[] moves = new short[MAX_MOVES];
-        Arrays.fill(moves, (short) -1);
+    public static int moves(BoardState boardState, int index) {
 
         int side = boardState.getSide();
         int oppSide = 1 ^ side;
@@ -24,23 +20,23 @@ public class MoveGen {
         long oppOcc = boardState.getColorOccupancy(oppSide);
         long fullOcc = myOcc | oppOcc;
 
-        int index = (side == WHITE)?
-                addWPMoves(boardState, moves, oppOcc, fullOcc) : addBPawnMoves(boardState, moves, oppOcc, fullOcc);
-        index = addKnightMoves(boardState, moves, index, side, myOcc, oppOcc);
-        index = addBishopMoves(boardState, moves,  index, side, myOcc, oppOcc, fullOcc);
-        index = addRookMoves(boardState, moves,  index, side, myOcc, oppOcc, fullOcc);
-        index = addQueenMoves(boardState, moves, index, side, myOcc, oppOcc, fullOcc);
-        addKingMoves(boardState, moves, index, side, myOcc, oppOcc, fullOcc);
+        index = (side == WHITE)?
+                addWPMoves(boardState, index, oppOcc, fullOcc) : addBPawnMoves(boardState, index, oppOcc, fullOcc);
+        index = addKnightMoves(boardState, index, side, myOcc, oppOcc);
+        index = addBishopMoves(boardState, index, side, myOcc, oppOcc, fullOcc);
+        index = addRookMoves(boardState, index, side, myOcc, oppOcc, fullOcc);
+        index = addQueenMoves(boardState, index, side, myOcc, oppOcc, fullOcc);
+        index = addKingMoves(boardState, index, side, myOcc, oppOcc, fullOcc);
 
-        return moves;
+        return index;
     }
 
-    private static int addWPMoves(BoardState boardState, short[] moves, long oppOcc, long fullOcc) {
+    public static short getMove(int index) {return moves[index];}
+
+    private static int addWPMoves(BoardState boardState, int index, long oppOcc, long fullOcc) {
 
         long wPawns = boardState.getPieceBB(W_PAWN);
         long enPassantTarget = boardState.getEnPassantTarget();
-
-        int index = 0;
 
         while (wPawns != 0) {
 
@@ -51,7 +47,7 @@ public class MoveGen {
             long moveSet = (mask << 8) & ~fullOcc;
             moveSet |= ((((mask & SECOND_RANK) << 8) & moveSet) << 8) & ~fullOcc;
 
-            moveSet |= (PAWN_MASK[WHITE * BOARD_SIZE + from] & (oppOcc | enPassantTarget));
+            moveSet |= (PAWN_MASK[from] & (oppOcc | enPassantTarget));
 
             while (moveSet != 0) {
 
@@ -88,12 +84,10 @@ public class MoveGen {
         return index;
     }
 
-    private static int addBPawnMoves(BoardState boardState, short[] moves, long oppOcc, long fullOcc) {
+    private static int addBPawnMoves(BoardState boardState, int index, long oppOcc, long fullOcc) {
 
         long bPawns = boardState.getPieceBB(B_PAWN);
         long enPassantTarget = boardState.getEnPassantTarget();
-
-        int index = 0;
 
         while (bPawns != 0) {
 
@@ -141,7 +135,7 @@ public class MoveGen {
         return index;
     }
 
-    private static int addKnightMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc) {
+    private static int addKnightMoves(BoardState boardState, int index, int side, long myOcc, long oppOcc) {
 
         long knights = boardState.getPieceBB(W_KNIGHT + side);
 
@@ -171,7 +165,7 @@ public class MoveGen {
         return index;
     }
 
-    private static int addBishopMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
+    private static int addBishopMoves(BoardState boardState, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
         long bishops = boardState.getPieceBB(W_BISHOP + side);
 
@@ -201,7 +195,7 @@ public class MoveGen {
         return index;
     }
 
-    private static int addRookMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
+    private static int addRookMoves(BoardState boardState, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
         long rooks = boardState.getPieceBB(W_ROOK + side);
 
@@ -231,7 +225,7 @@ public class MoveGen {
         return index;
     }
 
-    private static int addQueenMoves(BoardState boardState, short[] moves, int index, int side, long myOcc, long oppOcc, long fullOcc) {
+    private static int addQueenMoves(BoardState boardState, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
         long queens = boardState.getPieceBB(W_QUEEN + side);
 
@@ -261,19 +255,10 @@ public class MoveGen {
         return index;
     }
 
-    private static int addKingMoves(BoardState boardState, short[] moves, int index, int side, long myOcc,long oppOcc, long fullOcc) {
+    private static int addKingMoves(BoardState boardState, int index, int side, long myOcc, long oppOcc, long fullOcc) {
 
-        int oppSide = 1 ^ side;
         long king = boardState.getPieceBB(W_KING + side);
         int from = Long.numberOfTrailingZeros(king);
-
-        ////TODO: FIX THIS NPS BOTTLENECK
-        long pawnAtkMaks = (side == WHITE)? Attacks.bPawnAtk(boardState) : Attacks.wPawnAtk(boardState);
-        long oppAtkMask = pawnAtkMaks | Attacks.knightAtk(boardState, oppSide)
-                | Attacks.bishopAtk(boardState, oppSide, oppOcc, fullOcc)
-                | Attacks.rookAtk(boardState, oppSide, oppOcc, fullOcc)
-                | Attacks.queenAtk(boardState, oppSide, oppOcc, fullOcc)
-                | Attacks.kingAtk(boardState, oppSide);
 
         long atkMask = KING_MASK[from] & ~myOcc;
 
@@ -290,36 +275,42 @@ public class MoveGen {
             atkMask -= moveMask;
         }
 
+        //isolates the castling rights to the two LSB for each color
         long castlingRights = (boardState.castlingRights() & (0x3L << (2 * side))) >>> (2 * side);
 
         long relevantRank = FIRST_RANK << (side * 56);
 
-        if (((relevantRank & E_FILE) & oppAtkMask) != 0) return index;
+        if (Attacks.isInCheck(boardState, side)) return index;
 
         if ((castlingRights & 0x2) != 0) {
             int to = from + 2;
             int moveType = 0x2;
 
-            long fSq = (F_FILE & relevantRank) & (fullOcc | oppAtkMask);
-            long gSq = (G_FILE & relevantRank) & (fullOcc | oppAtkMask);
+            long relFSq = (F_FILE & relevantRank);
+            long relGSq = (G_FILE & relevantRank);
 
-            if ((fSq | gSq) == 0) {
-                short move = Move.encode(from, to, moveType);
-                moves[index++] = move;
+            if (((relFSq | relGSq) & fullOcc) == 0) {
+                if (!Attacks.isSqareAttacked(boardState, relFSq, side) && !Attacks.isSqareAttacked(boardState, relGSq, side)) {
+                    short move = Move.encode(from, to, moveType);
+                    moves[index++] = move;
+                }
             }
+
         }
 
         if ((castlingRights & 0x1) != 0) {
             int to = from - 2;
             int moveType = 0x3;
 
-            long bSq = (B_FILE & relevantRank) & fullOcc;
-            long cSq = (C_FILE & relevantRank) & (fullOcc | oppAtkMask);
-            long dSq = (D_FILE & relevantRank) & (fullOcc | oppAtkMask);
+            long relBSq = (B_FILE & relevantRank);
+            long relCSq = (C_FILE & relevantRank);
+            long relDSq = (D_FILE & relevantRank);
 
-            if ((bSq | cSq | dSq) == 0) {
-                short move = Move.encode(from, to, moveType);
-                moves[index++] = move;
+            if (((relBSq | relCSq | relDSq) & fullOcc) == 0) {
+                if (!Attacks.isSqareAttacked(boardState, relCSq, side) && !Attacks.isSqareAttacked(boardState, relDSq, side)) {
+                    short move = Move.encode(from, to, moveType);
+                    moves[index++] = move;
+                }
             }
         }
 

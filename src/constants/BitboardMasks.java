@@ -140,8 +140,8 @@ public class BitboardMasks {
 
             //all pawns that are not on the A file are shifted by 7 bits to the left/right to calculate all valid NW/SE attacks
             //all pawns that are not on the H file are shifted by 9 bits to the left/right to calculate all valid NE/SW attacks
-            PAWN_MASK[sq] = ((fromMask & ~FIRST_RANK) & ~A_FILE) << 7 |  ((fromMask & ~FIRST_RANK) & ~H_FILE) << 9;
-            PAWN_MASK[BOARD_SIZE + sq] = ((fromMask & ~EIGHT_RANK) & ~A_FILE) >>> 9 |  ((fromMask & ~EIGHT_RANK) & ~H_FILE) >>> 7;
+            PAWN_MASK[sq] = (fromMask & ~A_FILE) << 7 |  (fromMask & ~H_FILE) << 9;
+            PAWN_MASK[BOARD_SIZE + sq] = (fromMask & ~A_FILE) >>> 9 |  (fromMask & ~H_FILE) >>> 7;
 
             KNIGHT_MASK[sq] =
                     (fromMask & ~A_FILE) >>> 17 | (fromMask & ~A_FILE) << 15
